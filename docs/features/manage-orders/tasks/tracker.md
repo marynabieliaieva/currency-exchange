@@ -14,7 +14,7 @@
 | T7 | Introduce react-router and split App.tsx into page shells | wiring | Marisha | S | — | done |
 | T8 | Extend the API client and TS types | wiring | Marisha | S | — | done |
 | T9 | Make the order entry page creation-only | ui | Marisha | S | T7 | done |
-| T10 | Build the Manage Orders list screen | ui | Marisha | M | T7, T8 | todo |
+| T10 | Build the Manage Orders list screen | ui | Marisha | M | T7, T8 | done |
 | T11 | Build the Cancel and Cancel-with-forfeiture dialogs | ui | Marisha | M | T10 | todo |
 | T12 | Build the Fill entry dialog | ui | Marisha | S | T10 | todo |
 | T13 | Build the Amend entry dialog | ui | Marisha | S | T10 | todo |
