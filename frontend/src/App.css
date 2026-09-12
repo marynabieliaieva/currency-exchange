@@ -1,8 +1,30 @@
-.app {
+.app,
+.page {
   max-width: 720px;
   margin: 2rem auto;
   padding: 0 1rem;
   font-family: system-ui, sans-serif;
+}
+
+.app-nav {
+  max-width: 720px;
+  margin: 1rem auto 0;
+  padding: 0 1rem;
+  display: flex;
+  gap: 1rem;
+  font-family: system-ui, sans-serif;
+}
+
+.inline-status {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.inline-status-success {
+  background: #eafaf1;
+  color: #1e7e34;
+  border: 1px solid #b7ebc6;
 }
 
 .order-entry-form {
