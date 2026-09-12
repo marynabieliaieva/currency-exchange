@@ -1,5 +1,7 @@
 package com.currencyexchange.orderentry.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -19,14 +21,22 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
+    private static final int AMOUNT_SCALE = 8;
+
     public Order createOrder(CreateOrderRequest request) {
+        BigDecimal amount = normalize(request.getAmount());
         Order order = new Order(
                 request.getCurrencyPair(),
                 request.getSide(),
                 request.getType(),
-                request.getTriggerPrice(),
-                request.getAmount());
+                normalize(request.getTriggerPrice()),
+                amount);
+        order.setRemainingAmount(amount);
         return orderRepository.save(order);
+    }
+
+    private static BigDecimal normalize(BigDecimal value) {
+        return value.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
     }
 
     public List<Order> listOrders() {

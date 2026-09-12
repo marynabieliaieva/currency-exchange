@@ -54,4 +54,31 @@ class OrderServiceTest {
         assertThatThrownBy(() -> service.cancelOrder("missing-id"))
                 .isInstanceOf(OrderNotFoundException.class);
     }
+
+    @Test
+    void createOrderSetsRemainingAmountToNormalizedScaleEightAndNoFillEvents() {
+        OrderService service = new OrderService(orderRepository);
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setCurrencyPair("EUR/USD");
+        request.setSide(OrderSide.BUY);
+        request.setType(OrderType.TAKE_PROFIT);
+        request.setTriggerPrice(new BigDecimal("1.085"));
+        request.setAmount(new BigDecimal("1000"));
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Order created = service.createOrder(request);
+
+        assertThat(created.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("1000"));
+        assertThat(created.getRemainingAmount().scale()).isEqualTo(8);
+        assertThat(created.getAmount().scale()).isEqualTo(8);
+        assertThat(created.getTriggerPrice().scale()).isEqualTo(8);
+        assertThat(created.getFillEvents()).isEmpty();
+        assertThat(created.getStatus()).isEqualTo(OrderStatus.PENDING);
+    }
+
+    @Test
+    void filledStatusExistsOnEnum() {
+        assertThat(OrderStatus.valueOf("FILLED")).isEqualTo(OrderStatus.FILLED);
+    }
 }

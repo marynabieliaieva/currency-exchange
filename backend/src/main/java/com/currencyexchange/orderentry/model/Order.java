@@ -2,6 +2,8 @@ package com.currencyexchange.orderentry.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -17,8 +19,10 @@ public class Order {
     private OrderType type;
     private BigDecimal triggerPrice;
     private BigDecimal amount;
+    private BigDecimal remainingAmount;
     private OrderStatus status;
     private Instant createdAt;
+    private List<FillEvent> fillEvents = new ArrayList<>();
 
     public Order() {
     }
@@ -79,6 +83,22 @@ public class Order {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public BigDecimal getRemainingAmount() {
+        return remainingAmount;
+    }
+
+    public void setRemainingAmount(BigDecimal remainingAmount) {
+        this.remainingAmount = remainingAmount;
+    }
+
+    public List<FillEvent> getFillEvents() {
+        return fillEvents;
+    }
+
+    public void setFillEvents(List<FillEvent> fillEvents) {
+        this.fillEvents = fillEvents;
     }
 
     public OrderStatus getStatus() {
