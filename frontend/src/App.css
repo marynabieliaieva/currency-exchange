@@ -57,6 +57,13 @@
   cursor: pointer;
 }
 
+.fill-trail {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
 .order-entry-form {
   display: flex;
   flex-direction: column;

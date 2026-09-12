@@ -18,7 +18,7 @@
 | T11 | Build the Cancel and Cancel-with-forfeiture dialogs | ui | Marisha | M | T10 | done |
 | T12 | Build the Fill entry dialog | ui | Marisha | S | T10 | done |
 | T13 | Build the Amend entry dialog | ui | Marisha | S | T10 | done |
-| T14 | Build the expandable fill trail row | ui | Marisha | S | T10 | todo |
+| T14 | Build the expandable fill trail row | ui | Marisha | S | T10 | done |
 | T15 | Add a frontend test runner and e2e-through-UI tests | tests | Marisha | L | T9, T11, T12, T13, T14 | todo |
 
 **Total:** 15 tasks, ~1 person-week (feature size S).

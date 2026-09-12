@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import type { Order } from "../types/order";
+import { FillTrail } from "./FillTrail";
 
 interface ManageOrdersListProps {
   orders: Order[];
@@ -76,7 +77,9 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
               {isExpanded && (
                 <tr>
                   <td></td>
-                  <td colSpan={8}>{order.fillEvents.length} fill(s) recorded</td>
+                  <td colSpan={8}>
+                    <FillTrail fillEvents={order.fillEvents} />
+                  </td>
                 </tr>
               )}
             </Fragment>
