@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listOrders } from "../api/orderApi";
+import { AmendDialog } from "../components/AmendDialog";
 import { CancelDialog } from "../components/CancelDialog";
 import { CancelForfeitureDialog } from "../components/CancelForfeitureDialog";
 import { FillDialog } from "../components/FillDialog";
@@ -36,7 +37,7 @@ export function ManageOrdersPage() {
   }
 
   function handleAmend(order: Order) {
-    void order;
+    setDialog({ kind: "amend", order });
   }
 
   function handleOrderUpdated(updated: Order) {
@@ -75,6 +76,13 @@ export function ManageOrdersPage() {
         <FillDialog
           order={dialog.order}
           onFilled={handleOrderUpdated}
+          onDismiss={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "amend" && (
+        <AmendDialog
+          order={dialog.order}
+          onAmended={handleOrderUpdated}
           onDismiss={() => setDialog(null)}
         />
       )}
