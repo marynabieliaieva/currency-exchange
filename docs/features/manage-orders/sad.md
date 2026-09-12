@@ -83,7 +83,7 @@ The Trader is the only actor and talks to one system, which in turn depends on M
 **Top strategic choices (the seeds for ADRs):**
 
 1. **Continue the existing two-surface split** (`backend-service` + `web-frontend`) — manage-orders extends the surfaces order-entry already established rather than introducing a new one; no new module or deployment unit.
-2. **Atomic conditional update over an embedded fill-events array** (ADR-0001) — cancel/fill/amend are each a single guarded MongoDB write (`status = PENDING` + a sufficient-remaining-amount condition) that also appends the fill event in the same atomic document write. Chosen over optimistic-locking retries or an in-process lock because it satisfies the AC-05/AC-13 concurrency NFR directly at the data layer, with no retry logic and no multi-instance failure mode.
+2. **Atomic conditional update over an embedded fill-events array** (ADR-0001) — cancel, fill, and amend are each a single guarded MongoDB write, but each guards a different condition and mutates differently: fill guards `status = PENDING` AND `effectiveRemaining >= amount` (where `effectiveRemaining` falls back to the order's original amount when `remainingAmount` was never set — see AC-11) and, on success, decrements `remainingAmount` and appends a fill event; cancel guards only `status = PENDING` and flips status to `CANCELLED` without touching `remainingAmount` or appending a fill event; amend guards `status = PENDING` AND the new value stays within the allowed range, and only updates `triggerPrice`/`remainingAmount`. A write whose guard fails is followed by a plain re-read of the order so the service can tell the Trader *why* (already closed vs. amount out of range) rather than a single undifferentiated rejection. Chosen over optimistic-locking retries or an in-process lock because it satisfies the AC-05/AC-13 concurrency NFR directly at the data layer, with no retry logic; see ADR-0001 for the full comparison.
 3. **Introduce react-router for screen navigation** (ADR-0002) — `App.tsx` becomes a thin router shell with two routes so the entry page and Manage Orders each get their own URL (AC-15), replacing the current router-less single page. Chosen over hand-rolled History-API routing or separate Vite multi-page bundles as the standard, least-surprising way to give a two-screen SPA real navigation.
 4. **No caching tier** — nothing in the app caches today; this feature introduces none.
 
@@ -107,7 +107,7 @@ backend/src/main/java/com/currencyexchange/orderentry/
 frontend/src/
 ├── App.tsx          thin router shell (ADR-0002): routes "/" and "/manage-orders"
 ├── pages/           OrderEntryPage (creation-only, AC-09), ManageOrdersPage (new)
-├── components/      OrderEntryForm (existing, unchanged), ManageOrdersList (new), CancelDialog / CancelForfeitureDialog / FillDialog / AmendDialog (new), FillTrail (new, inline row expansion)
+├── components/      OrderEntryForm (existing, unchanged), OrderList.tsx (removed — its inline list + Cancel button are what AC-09 requires off the entry page), ManageOrdersList (new, takes over listing + adds Fill/Amend), CancelDialog / CancelForfeitureDialog / FillDialog / AmendDialog (new), FillTrail (new, inline row expansion)
 ├── api/orderApi.ts  extended: fillOrder(id, amount), amendOrder(id, {price?, remainingAmount?})
 └── types/order.ts   extended: FILLED status, remainingAmount, FillEvent
 ```
@@ -147,14 +147,16 @@ sequenceDiagram
 
     Trader->>Web: submits a fill amount for a PENDING order
     Web->>API: requests the fill
-    API->>DB: atomic conditional update (status=PENDING, remaining >= amount)
+    API->>DB: atomic conditional update (status=PENDING, effective remaining >= amount)
     alt condition holds
         DB-->>API: updated order (remaining reduced, fill event appended)
         API-->>Web: fill recorded, new remaining amount
         Web-->>Trader: confirmation (and FILLED status if remaining reached zero)
-    else condition fails (already exceeds remaining, or order no longer PENDING)
+    else condition fails
         DB-->>API: no matching document
-        API-->>Web: rejection with the reason
+        API->>DB: re-reads the order to tell "no longer PENDING" apart from "amount exceeds what's left"
+        DB-->>API: current status and remaining amount
+        API-->>Web: rejection naming the actual reason
         Web-->>Trader: inline rejection, remaining amount unchanged
     end
 ```
@@ -199,7 +201,9 @@ The `sequences` stage covers the remaining §5 acceptance criteria (amend, the f
 | Internationalisation | N/A — single language | — |
 | Observability | None beyond default Spring Boot logs; no metrics/tracing exist today | — |
 | Events | N/A — no event system in this app | — |
-| Concurrency guard | Atomic conditional MongoDB update per action (ADR-0001) — the mechanism, not a separate pattern, is the crosscutting concept here | ADR-0001 |
+| Concurrency guard (server) | Atomic conditional MongoDB update per action (ADR-0001) — the mechanism, not a separate pattern, is the crosscutting concept here | ADR-0001 |
+| Double-submit guard (client) | Each action button (Cancel/Fill/Amend) is disabled for the duration of its in-flight request and re-enabled on response, success or rejection — a UI-side belt alongside the DB-side atomic guard (spec §2 Goals) | ux-flows.md US-05 |
+| Responsive layout | Manage Orders and the entry page both work at any browser width — no desktop-only assumption (posture confirmed directly with the Trader; formalized project-wide once `/sdd:design-system` runs) | ux-flows.md Platform decisions |
 
 ## 9. Architecture decisions
 
@@ -224,8 +228,8 @@ ADR files live under `docs/features/manage-orders/adr/`.
 
 **QG-3. Zero-manual-edit completeness**
 - **When:** the Trader performs a cancel, fill, or amend from the Manage Orders screen.
-- **Then:** the action completes entirely through the UI with no database edit, reflected immediately in the order's row.
-- **How verify:** manual QA against the KPI target ("under 30 seconds per action," spec §7) plus AC coverage via an e2e-through-UI test per action.
+- **Then:** the action completes entirely through the UI with no database edit, reflected immediately in the order's row. (Spec §6 leaves latency as an explicit TBD for this single-local-user tool — the "under 30 seconds" figure in spec §7 is an informal Trader-perceived KPI, not a latency SLO this feature is verified against.)
+- **How verify:** AC coverage via an e2e-through-UI test per action, confirming the action completes with no manual data-layer step; the 30-second figure is checked informally by the Trader, not as an automated assertion.
 
 ## 11. Risks and technical debt
 
@@ -235,6 +239,7 @@ ADR files live under `docs/features/manage-orders/adr/`.
 | Decimal rounding across multiple partial fills could leave a "phantom pending" (a near-zero-but-not-exactly-zero remaining amount that never auto-transitions to FILLED) | Open question | Resolve before `sdd:data-model` — pick a rounding-safe representation (e.g. a fixed-scale `BigDecimal` with an explicit near-zero check) | Marisha |
 | No `docs/architecture-map.md` exists for this repo yet — this pass scanned the code directly | Low | Run `/sdd:survey` to persist a reusable map for future features | Marisha |
 | `Order` documents grow with every fill event (ADR-0001's embedded-array shape) | Low | Acceptable at this feature's expected order/fill volume; revisit (separate `FillEvent` collection) only if fill counts per order grow large | Marisha |
+| This feature is the first to need real test infrastructure: the repo has one mocked-repository unit test class (`OrderServiceTest`) and no integration-test harness, and the frontend has no test runner at all | Medium | Add an integration-test setup (e.g. an embedded/ephemeral MongoDB) for the concurrency scenarios in §10 QG-1, and a frontend test runner + e2e-through-UI tooling before those §10 verifications can run — scope this as setup work in `tasks`, not assumed-available tooling | Marisha |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
 - No amend-history or audit trail — only an order's current state is visible, not a log of past amendments (spec §3 non-goal).

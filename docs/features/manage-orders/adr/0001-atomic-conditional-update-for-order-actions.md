@@ -31,13 +31,15 @@ manage-orders adds Cancel/Fill/Amend actions on top of the existing `Order` docu
 
 ## Decision outcome
 
-**Chosen:** Option 1. It satisfies the concurrency NFR directly at the data layer (the spec's own measurement) with a single round-trip and no retry logic to get wrong, and embedding fill events keeps the guard-and-mutate step atomic in one document write — no multi-document transaction (and therefore no replica-set requirement) is needed. Option 2 adds a retry loop for no benefit over option 1 here. Option 3 fails the moment this app runs as more than one instance, and enforces nothing against a direct database write — a real risk for the same reasons documented as accepted debt elsewhere in this feature (no authorization layer).
+**Chosen:** Option 1. It satisfies the concurrency NFR directly at the data layer (the spec's own measurement) with a single round-trip and no retry logic to get wrong, and embedding fill events keeps the guard-and-mutate step atomic in one document write — no multi-document transaction (and therefore no replica-set requirement) is needed. Option 2 adds a retry loop for no benefit over option 1 here. Option 3's actual weakness isn't multi-instance deployment (this app runs, and is expected to keep running, as a single instance) — it's that an in-process lock lives entirely in application memory and enforces nothing against a write that reaches MongoDB by any other path (a direct script, a future admin tool, a second process started by mistake). That's the same category of exposure already accepted elsewhere in this feature for the no-authorization decision, but here it's avoidable at no extra cost by putting the guard in the data layer instead.
+
+Fill, cancel, and amend each guard a different condition through this same mechanism, not a single shared precondition: fill's guard is `status = PENDING` AND `effectiveRemaining >= amount` (falling back to the order's original amount when `remainingAmount` was never recorded, so a legacy pre-feature order — AC-11 — is guarded exactly as if it had an explicit remaining amount equal to its original one); cancel's guard is only `status = PENDING`; amend's guard is `status = PENDING` AND the requested value staying inside the allowed range. Only fill mutates `remainingAmount` and appends a fill event as part of its write. When a guard fails, the service issues a plain read of the current order to distinguish *why* — already closed vs. amount out of range — rather than surfacing one generic rejection for every failure.
 
 ## Consequences
 
 **Positive**
-- AC-05/AC-13 hold by construction: the database itself rejects any update whose precondition (`status = PENDING`, enough remaining) no longer holds, no application-level coordination required.
-- One atomic write covers "reduce remaining amount" + "append fill event" + "flip to FILLED at zero" together — no partial-update window.
+- AC-05/AC-13 hold by construction: the database itself rejects any update whose action-specific precondition (`status = PENDING`, plus fill's remaining-amount check or amend's range check) no longer holds, no application-level coordination required.
+- Fill's atomic write covers "reduce remaining amount" + "append fill event" + "flip to FILLED at zero" together — no partial-update window.
 - No new infrastructure (no replica set, no transactions, no external lock service).
 
 **Negative**
