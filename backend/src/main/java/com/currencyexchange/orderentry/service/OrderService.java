@@ -60,7 +60,7 @@ public class OrderService {
 
     public Order fillOrder(String id, BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidFillAmountException("Fill amount must be a positive number");
+            throw new InvalidFillAmountException("amount must be greater than 0", InvalidFillAmountException.Reason.NOT_POSITIVE);
         }
         return orderMongoOperations.tryFill(id, normalize(amount))
                 .orElseGet(() -> {
@@ -68,7 +68,8 @@ public class OrderService {
                     if (current.getStatus() != OrderStatus.PENDING) {
                         throw new OrderNotOpenException(id, current.getStatus().name());
                     }
-                    throw new InvalidFillAmountException("Fill amount exceeds what's left on the order");
+                    throw new InvalidFillAmountException("amount exceeds what's left on the order",
+                            InvalidFillAmountException.Reason.EXCEEDS_REMAINING);
                 });
     }
 

@@ -8,7 +8,7 @@
 | T1 | Extend Order model with FILLED status, remainingAmount, and embedded FillEvent | domain | Marisha | S | — | done |
 | T2 | Add MongoTemplate-based atomic conditional update helpers | infra | Marisha | M | T1 | done |
 | T3 | Implement guarded cancelOrder/fillOrder/amendOrder in OrderService | app | Marisha | L | T1, T2 | done |
-| T4 | Add fill/amend endpoints, extend cancel + exception handling | ports | Marisha | M | T3 | todo |
+| T4 | Add fill/amend endpoints, extend cancel + exception handling | ports | Marisha | M | T3 | done |
 | T5 | Add an integration-test harness (ephemeral MongoDB) | tests | Marisha | S | — | done |
 | T6 | Write concurrency integration tests | tests | Marisha | M | T4, T5 | todo |
 | T7 | Introduce react-router and split App.tsx into page shells | wiring | Marisha | S | — | todo |
