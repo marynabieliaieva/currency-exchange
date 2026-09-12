@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Clarified
 owner: "Marisha"
 reviewers: ["Tech Lead", "Security Lead"]
 updated_at: "2026-09-12"
@@ -27,7 +27,7 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 
 - The Trader can cancel, fill, or amend any of their pending orders entirely from the UI, with zero manual database edits.
 - Every fill — full or partial — is individually visible, so the Trader can always explain how an order's remaining amount was derived without inspecting raw data.
-- Order state changes stay consistent even under rapid or duplicate action requests (e.g. a double-click never corrupts an order's remaining amount).
+- No two actions (fill, cancel, or amend) on the same order can ever apply concurrently in a way that leaves it inconsistent — e.g. two overlapping fill requests never both succeed if their combined amount exceeds what's remaining. Accidental double-submission (e.g. a double-click) is additionally guarded at the UI by disabling an action while it's in flight.
 - The order entry page shows creation only — its current inline order list and Cancel button are fully removed once Manage Orders exists.
 
 ## 3. Non-goals
@@ -93,25 +93,25 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 
 **Given** a PENDING order that already has one or more fill events
 **When** the Trader attempts to cancel it
-**Then** the system tells the Trader how much has already been filled and requires an explicit second confirmation naming that cancelling permanently forfeits the remaining (unfilled) amount, before proceeding
+**Then** the system tells the Trader how much has already been filled and requires an explicit second confirmation naming that cancelling permanently forfeits the remaining (unfilled) amount, before proceeding; once cancelled, the order's status becomes CANCELLED and its remaining amount value is left unchanged (not reset), since it is now permanently unfillable
 
 ### AC-03 (US-02) — happy path
 
 **Given** a PENDING order with a remaining amount greater than zero
 **When** the Trader records a fill for an amount at or below the remaining amount
-**Then** the system records a new fill event (amount + timestamp), reduces the order's remaining amount accordingly, confirms to the Trader, and — if the remaining amount reaches zero — marks the order FILLED
+**Then** the system records a new fill event (the amount and the current time as its timestamp), reduces the order's remaining amount accordingly, confirms to the Trader, and — if the remaining amount reaches zero — marks the order FILLED
 
 ### AC-04 (US-05) — error
 
 **Given** a PENDING order with a remaining amount
-**When** the Trader attempts to record a fill greater than the remaining amount
-**Then** the system rejects the fill and tells the Trader the amount exceeds what's left on the order, leaving the remaining amount unchanged
+**When** the Trader attempts to record a fill that is zero, negative, or greater than the remaining amount
+**Then** the system rejects the fill, tells the Trader why (not a positive number, or exceeds what's left on the order), and leaves the remaining amount unchanged
 
 ### AC-05 (US-05) — domain invariant
 
 **Given** a PENDING order with a remaining amount, and two fill requests submitted for it at nearly the same time whose combined amount would exceed the remaining amount
 **When** both are processed
-**Then** the system accepts only as much as the remaining amount actually covers, rejects the rest as an overfill, and never lets the order's remaining amount go below zero
+**Then** the system processes them one at a time; whichever fill would leave the remaining amount negative is rejected in full, exactly as in AC-04 — never partially applied — so the order's remaining amount never goes below zero
 
 ### AC-06 (US-03) — happy path
 
@@ -123,13 +123,13 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 
 **Given** a PENDING order that already has one or more fill events recorded against it (a related but separately-tracked record set)
 **When** the Trader amends the order
-**Then** the system only ever lets the amend change the remaining (unfilled) amount — the already-filled portion, and its fill events, are never altered or reduced by an amend
+**Then** the system only ever lets the amend change the remaining (unfilled) amount — never above the order's original amount minus its already-filled amount, and never to exactly zero (the Trader must use Cancel for that) — the already-filled portion, and its fill events, are never altered or reduced by an amend
 
 ### AC-08 (US-04) — happy path
 
 **Given** an order with one or more recorded fill events
-**When** the Trader opens that order's detail on the Manage Orders screen
-**Then** the system shows each fill event's amount and timestamp, in order
+**When** the Trader expands that order's row on the Manage Orders screen
+**Then** the system shows each fill event's amount and timestamp, oldest first
 
 ### AC-09 (US-06) — happy path
 
@@ -143,6 +143,36 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 **When** the Trader attempts to cancel, fill, or amend it
 **Then** the system rejects the action and tells the Trader the order is no longer open
 
+### AC-11 (US-02) — domain invariant
+
+**Given** a PENDING order created before this feature existed, with no remaining amount ever recorded for it
+**When** the Trader views it or acts on it
+**Then** the system treats its remaining amount as equal to its original amount, as if zero fill events had been recorded
+
+### AC-12 (US-03) — error
+
+**Given** a PENDING order
+**When** the Trader attempts to amend its remaining amount above (original amount minus already-filled amount), or to exactly zero
+**Then** the system rejects the amend and explains the allowed range to the Trader
+
+### AC-13 (US-05) — domain invariant
+
+**Given** a PENDING order, and two different actions (any combination of cancel, fill, or amend) submitted for it at nearly the same time
+**When** both are processed
+**Then** the system applies them one at a time so the order never ends up in an inconsistent state — for example, a fill racing a concurrent cancel on the same order is rejected once the cancel has taken effect, never silently recorded against a closed order
+
+### AC-14 (US-04) — happy path
+
+**Given** the Trader has orders in every status (PENDING, CANCELLED, FILLED)
+**When** the Trader opens the Manage Orders screen
+**Then** the system lists all of them regardless of status, with Cancel/Fill/Amend available only on PENDING orders and disabled on CANCELLED/FILLED ones
+
+### AC-15 (US-06) — happy path
+
+**Given** the Trader is on either the order entry page or the Manage Orders screen
+**When** they want to switch between the two
+**Then** each is reachable at its own distinct address, so the Trader can navigate directly to either one
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
@@ -150,7 +180,7 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 | Latency p95 cancel/fill/amend action | TBD — see §8 | TBD — see §8 |
 | Throughput | TBD — see §8 | TBD — see §8 |
 | Availability | TBD — see §8 | TBD — see §8 |
-| Concurrency safety | two simultaneous fill requests on the same order never drive remaining amount below zero | atomic conditional update at the data layer (AC-05) |
+| Concurrency safety | no two actions (fill/cancel/amend) on the same order ever apply concurrently in a way that leaves it inconsistent | atomic conditional update at the data layer (AC-05, AC-13) |
 
 ## 6.1 Security / privacy
 
@@ -175,7 +205,6 @@ Traceability: this extends the existing layered pattern from the order-entry fea
 
 - [ ] Does the app need a correction/reversal path for a wrongly-recorded fill or cancel? Default now: no (see §3 Non-goals). — owner: Marisha, due: revisit after first real usage
 - [ ] Does fill-event history need any export or aggregate view beyond the per-order expandable list? Default now: no. — owner: Marisha, due: revisit once usage shows a need
-- [ ] Should a fill's timestamp be validated against the order's creation time, to prevent a causally-impossible record (e.g. a fill dated before the order existed)? — owner: Marisha, due: before `sdd:tasks` if adopted
 - [ ] Could decimal rounding across multiple partial fills leave an order's remaining amount at a near-zero-but-not-exactly-zero value, preventing the PENDING→FILLED auto-transition ("phantom pending")? — owner: Marisha, due: before `sdd:data-model` — pick a rounding-safe representation
 - [ ] Do latency/throughput/availability targets matter at all for this personal, single-local-user tool, or should §6 stay concurrency-only permanently? Default now: TBD, no real SLO tracked. — owner: Marisha, due: revisit if this ever runs on shared/remote infrastructure
 - [ ] Should authorization/ownership ever be introduced (e.g. if this app ever becomes multi-user or gets deployed somewhere shared)? Default now: no — see the §1 decision override. — owner: Marisha, due: revisit if deployed beyond personal single-user use
