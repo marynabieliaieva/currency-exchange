@@ -184,7 +184,91 @@ sequenceDiagram
     Web-->>Trader: confirmation
 ```
 
-The `sequences` stage covers the remaining §5 acceptance criteria (amend, the fill-trail expansion, and the closed-order race guard) as further flows against these same two containers.
+**Critical flow 3: Cancel a pending order with no fills (AC-01)**
+
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant Web as Order Web App
+    participant API as Order API
+    participant DB as MongoDB
+
+    Trader->>Web: requests cancel on an order with no recorded fills
+    Web-->>Trader: simple cancel confirmation dialog
+    Trader->>Web: confirms
+    Web->>API: confirms the cancel
+    API->>DB: atomic conditional update (status=PENDING → CANCELLED)
+    DB-->>API: updated order
+    API-->>Web: cancelled
+    Web-->>Trader: confirmation
+```
+
+**Critical flow 4: Amend a pending order (AC-06, AC-07, AC-12)**
+
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant Web as Order Web App
+    participant API as Order API
+    participant DB as MongoDB
+
+    Trader->>Web: submits a new trigger price and/or remaining amount
+    Web->>API: requests the amend
+    API->>DB: atomic conditional update (status=PENDING AND new remaining amount within allowed range)
+    alt condition holds
+        DB-->>API: updated order (already-filled portion and its fill events untouched)
+        API-->>Web: amend applied, new values
+        Web-->>Trader: confirmation showing the new values
+    else condition fails
+        DB-->>API: no matching document
+        API->>DB: re-reads the order to tell "no longer PENDING" apart from "value outside the allowed range"
+        DB-->>API: current status and allowed range
+        API-->>Web: rejection naming the actual reason
+        Web-->>Trader: inline rejection explaining the allowed range, order unchanged
+    end
+```
+
+**Critical flow 5: View the order list and an order's fill trail (AC-08, AC-14)**
+
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant Web as Order Web App
+    participant API as Order API
+    participant DB as MongoDB
+
+    Trader->>Web: opens the Manage Orders screen
+    Web->>API: requests all orders
+    API->>DB: reads orders in every status
+    DB-->>API: orders (PENDING, CANCELLED, FILLED)
+    API-->>Web: full list
+    Web-->>Trader: orders listed; Cancel/Fill/Amend enabled only on PENDING rows
+    Trader->>Web: expands a row with recorded fill events
+    Web-->>Trader: fill events shown, oldest first (amount + timestamp each)
+```
+
+**Critical flow 6: Attempt an action on a closed order — cross-action race guard (AC-10, AC-13)**
+
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant Web as Order Web App
+    participant API as Order API
+    participant DB as MongoDB
+
+    Note over API,DB: order is PENDING when the Trader's row rendered
+    Trader->>Web: triggers cancel, fill, or amend on the order
+    Web->>API: requests the action
+    Note over API,DB: a different action (cancel, fill, or amend) already closed the order moments earlier
+    API->>DB: atomic conditional update (status=PENDING AND action-specific condition)
+    DB-->>API: no matching document
+    API->>DB: re-reads the order
+    DB-->>API: current status (CANCELLED or FILLED)
+    API-->>Web: rejection — order is no longer open
+    Web-->>Trader: inline rejection naming the order as no longer open
+```
+
+The remaining §5 acceptance criteria are non-runtime: AC-09 (entry page shows creation only, no list/Cancel) and AC-15 (entry page and Manage Orders reachable at distinct URLs) are client-side screen composition and routing decisions with no backend round-trip — see `ux-flows.md` US-06 for their flowchart. AC-11 (legacy orders with no recorded remaining amount) is a read-path fallback, not a distinct branch — see the "effective remaining" note in Critical flow 1.
 
 ## 7. Deployment view
 
