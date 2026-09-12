@@ -67,7 +67,11 @@ class OrderConcurrencyIT extends IntegrationTestSupport {
     }
 
     @Test
-    void fillRacingCancelLeavesOrderInAConsistentState() throws Exception {
+    void partialFillRacingCancelLeavesOrderInAConsistentState() throws Exception {
+        // A partial fill (50 of 100) never closes the order on its own (AC-11), so a
+        // cancel that lands after it is the legitimate cancel-with-forfeiture flow
+        // (AC-02) — both actions are allowed to succeed here, as long as the final
+        // state is one of the three consistent outcomes below.
         Order order = seedPendingOrder(new BigDecimal("100"));
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
@@ -81,20 +85,61 @@ class OrderConcurrencyIT extends IntegrationTestSupport {
             Object cancelResult = cancel.join();
 
             Order finalOrder = orderRepository.findById(order.getId()).orElseThrow();
+            boolean fillWon = fillResult instanceof Order;
+            boolean cancelWon = cancelResult instanceof Order;
 
-            if (fillResult instanceof Order && cancelResult instanceof Order) {
-                throw new AssertionError("both fill and cancel reported success against the same order");
+            if (fillWon && cancelWon) {
+                // fill landed first (order stayed PENDING with fill events), then
+                // cancel forfeited the rest (AC-02): status flips, remaining is left
+                // exactly as the fill left it.
+                assertThat(finalOrder.getStatus().name()).isEqualTo("CANCELLED");
+                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("50"));
+            } else if (cancelWon) {
+                // cancel landed first and closed the order before the fill could apply.
+                assertThat(finalOrder.getStatus().name()).isEqualTo("CANCELLED");
+                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("100"));
+                assertThat(fillResult).isInstanceOf(OrderNotOpenException.class);
+            } else {
+                assertThat(fillWon).as("at least one of fill/cancel must take effect").isTrue();
+                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("50"));
+                assertThat(cancelResult).isInstanceOf(OrderNotOpenException.class);
             }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
+    void fullFillRacingCancelExactlyOneSucceeds() throws Exception {
+        // A full fill (100 of 100) closes the order (AC-11 auto-transition to
+        // FILLED), so unlike the partial-fill case, fill and cancel here are
+        // mutually exclusive: once one takes effect the order is no longer PENDING
+        // and the other must be rejected (AC-13).
+        Order order = seedPendingOrder(new BigDecimal("100"));
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            CompletableFuture<Object> fill = CompletableFuture.supplyAsync(
+                    () -> tryFill(order.getId(), new BigDecimal("100")), pool);
+            CompletableFuture<Object> cancel = CompletableFuture.supplyAsync(
+                    () -> tryCancel(order.getId()), pool);
+            CompletableFuture.allOf(fill, cancel).join();
+
+            Object fillResult = fill.join();
+            Object cancelResult = cancel.join();
+
+            Order finalOrder = orderRepository.findById(order.getId()).orElseThrow();
+
             boolean fillWon = fillResult instanceof Order;
             boolean cancelWon = cancelResult instanceof Order;
             assertThat(fillWon ^ cancelWon).as("exactly one of fill/cancel took effect").isTrue();
 
             if (cancelWon) {
                 assertThat(finalOrder.getStatus().name()).isEqualTo("CANCELLED");
-                assertThat(cancelResult).isInstanceOf(Order.class);
+                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("100"));
                 assertThat(fillResult).isInstanceOf(OrderNotOpenException.class);
             } else {
-                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("50"));
+                assertThat(finalOrder.getStatus().name()).isEqualTo("FILLED");
+                assertThat(finalOrder.getRemainingAmount()).isEqualByComparingTo(BigDecimal.ZERO);
                 assertThat(cancelResult).isInstanceOf(OrderNotOpenException.class);
             }
         } finally {
