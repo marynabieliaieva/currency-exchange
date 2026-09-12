@@ -6,9 +6,10 @@ interface FillDialogProps {
   order: Order;
   onFilled: (order: Order) => void;
   onDismiss: () => void;
+  onRejected?: () => void;
 }
 
-export function FillDialog({ order, onFilled, onDismiss }: FillDialogProps) {
+export function FillDialog({ order, onFilled, onDismiss, onRejected }: FillDialogProps) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export function FillDialog({ order, onFilled, onDismiss }: FillDialogProps) {
       onFilled(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record fill");
+      onRejected?.();
     } finally {
       setSubmitting(false);
     }

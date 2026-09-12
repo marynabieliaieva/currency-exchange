@@ -239,7 +239,7 @@ describe("ManageOrdersPage — AC-06/AC-07/AC-12 amend", () => {
     expect(within(updatedRow).getByText("30")).toBeInTheDocument();
   });
 
-  it("rejects an amend above the allowed max or to exactly zero, explaining the allowed range", async () => {
+  it("rejects an amend above the allowed max, explaining the allowed range", async () => {
     const user = userEvent.setup();
     mockedListOrders.mockResolvedValue([makeOrder({ remainingAmount: 100, amount: 100 })]);
     mockedAmendOrder.mockRejectedValue(
@@ -257,11 +257,36 @@ describe("ManageOrdersPage — AC-06/AC-07/AC-12 amend", () => {
     const dialog = await screen.findByRole("dialog", { name: /Amend order/i });
     const remainingInput = within(dialog).getByLabelText(/Remaining amount/i);
     await user.clear(remainingInput);
-    await user.type(remainingInput, "0");
+    await user.type(remainingInput, "150");
     await user.click(within(dialog).getByRole("button", { name: /^Amend$/i }));
 
     expect(
       await within(dialog).findByText(/Remaining amount must be greater than 0 and at most 100/i),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects an amend to exactly zero with the bean-validation message", async () => {
+    // Unlike the above-max case (a 409 domain rejection from InvalidAmendException), amending to
+    // exactly zero fails AmendRequest's own @DecimalMin and never reaches the service — the
+    // backend responds 400 with no `code` (GlobalExceptionHandler's validation-failure branch).
+    const user = userEvent.setup();
+    mockedListOrders.mockResolvedValue([makeOrder({ remainingAmount: 100, amount: 100 })]);
+    mockedAmendOrder.mockRejectedValue(
+      new ApiRequestError("remainingAmount must be greater than 0", 400),
+    );
+
+    render(<ManageOrdersPage />);
+    await screen.findByRole("row", { name: /EUR\/USD/i });
+
+    await user.click(screen.getByRole("button", { name: "Amend" }));
+    const dialog = await screen.findByRole("dialog", { name: /Amend order/i });
+    const remainingInput = within(dialog).getByLabelText(/Remaining amount/i);
+    await user.clear(remainingInput);
+    await user.type(remainingInput, "0");
+    await user.click(within(dialog).getByRole("button", { name: /^Amend$/i }));
+
+    expect(
+      await within(dialog).findByText(/remainingAmount must be greater than 0/i),
     ).toBeInTheDocument();
   });
 });
@@ -308,5 +333,27 @@ describe("ManageOrdersPage — AC-10/AC-13 closed-order and race-loss rejection 
     await user.click(within(dialog).getByRole("button", { name: /Record/i }));
 
     expect(await within(dialog).findByText(/Order is no longer open/i)).toBeInTheDocument();
+  });
+
+  it("refreshes the row so a race-lost action's row reflects the order's true, now-closed status", async () => {
+    const user = userEvent.setup();
+    mockedListOrders
+      .mockResolvedValueOnce([makeOrder({ remainingAmount: 100, status: "PENDING" })])
+      .mockResolvedValueOnce([makeOrder({ remainingAmount: 100, status: "CANCELLED" })]);
+    mockedFillOrder.mockRejectedValue(
+      new ApiRequestError("Order is no longer open", 409, "order.not_pending"),
+    );
+
+    render(<ManageOrdersPage />);
+    await screen.findByRole("row", { name: /EUR\/USD/i });
+
+    await user.click(screen.getByRole("button", { name: "Fill" }));
+    const dialog = await screen.findByRole("dialog", { name: /Record fill/i });
+    await user.type(within(dialog).getByLabelText(/Fill amount/i), "10");
+    await user.click(within(dialog).getByRole("button", { name: /Record/i }));
+    await within(dialog).findByText(/Order is no longer open/i);
+
+    expect(mockedListOrders).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole("row", { name: /CANCELLED/i })).toBeInTheDocument();
   });
 });

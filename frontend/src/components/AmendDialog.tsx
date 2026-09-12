@@ -6,13 +6,14 @@ interface AmendDialogProps {
   order: Order;
   onAmended: (order: Order) => void;
   onDismiss: () => void;
+  onRejected?: () => void;
 }
 
 function sumFilled(order: Order): number {
   return order.fillEvents.reduce((total, fill) => total + fill.amount, 0);
 }
 
-export function AmendDialog({ order, onAmended, onDismiss }: AmendDialogProps) {
+export function AmendDialog({ order, onAmended, onDismiss, onRejected }: AmendDialogProps) {
   const [triggerPrice, setTriggerPrice] = useState(String(order.triggerPrice));
   const [remainingAmount, setRemainingAmount] = useState(String(order.remainingAmount ?? order.amount));
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +32,7 @@ export function AmendDialog({ order, onAmended, onDismiss }: AmendDialogProps) {
       onAmended(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to amend order");
+      onRejected?.();
     } finally {
       setSubmitting(false);
     }

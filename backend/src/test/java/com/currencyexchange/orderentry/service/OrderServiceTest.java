@@ -282,4 +282,19 @@ class OrderServiceTest {
 
         assertThat(result.get(0).getRemainingAmount()).isEqualByComparingTo(new BigDecimal("1000"));
     }
+
+    @Test
+    void amendOrderAppliesRemainingAmountFallbackWhenPriceOnlyAmendLeavesItUnset() {
+        // A price-only amend on a legacy order never touches remainingAmount, so the raw
+        // tryAmend result can still carry a null remainingAmount — the fallback must still apply.
+        OrderService service = service();
+        Order amended = pendingOrder("id-1", new BigDecimal("1000"), null);
+        amended.setTriggerPrice(new BigDecimal("1.09000000"));
+        when(orderMongoOperations.tryAmend(eq("id-1"), eq(new BigDecimal("1.09000000")), eq(null)))
+                .thenReturn(Optional.of(amended));
+
+        Order result = service.amendOrder("id-1", new BigDecimal("1.09"), null);
+
+        assertThat(result.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("1000"));
+    }
 }

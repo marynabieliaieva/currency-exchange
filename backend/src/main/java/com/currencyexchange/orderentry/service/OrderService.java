@@ -84,7 +84,7 @@ public class OrderService {
         BigDecimal normalizedPrice = newPrice != null ? normalize(newPrice) : null;
         BigDecimal normalizedRemaining = newRemainingAmount != null ? normalize(newRemainingAmount) : null;
 
-        return orderMongoOperations.tryAmend(id, normalizedPrice, normalizedRemaining)
+        return withRemainingAmountFallback(orderMongoOperations.tryAmend(id, normalizedPrice, normalizedRemaining)
                 .orElseGet(() -> {
                     Order current = getOrder(id);
                     if (current.getStatus() != OrderStatus.PENDING) {
@@ -93,7 +93,7 @@ public class OrderService {
                     BigDecimal ceiling = current.getAmount().subtract(totalFilled(current));
                     throw new InvalidAmendException(
                             "Remaining amount must be greater than zero and at most " + ceiling.stripTrailingZeros().toPlainString());
-                });
+                }));
     }
 
     private static BigDecimal totalFilled(Order order) {

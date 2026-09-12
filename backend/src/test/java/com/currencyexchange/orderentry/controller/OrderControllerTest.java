@@ -141,6 +141,17 @@ class OrderControllerTest {
     }
 
     @Test
+    void amendOrderReturns400WhenRemainingAmountIsExactlyZero() throws Exception {
+        // AC-12's "never exactly zero" is enforced by AmendRequest's own bean validation
+        // (@DecimalMin exclusive), so this never reaches the service — a 400, not the 409
+        // InvalidAmendException maps to for the above-max case.
+        mockMvc.perform(patch("/api/orders/id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"remainingAmount\": 0}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void amendOrderReturns409WithNotPendingCodeWhenClosed() throws Exception {
         when(orderService.amendOrder(anyString(), any(), any()))
                 .thenThrow(new OrderNotOpenException("id-1", "FILLED"));

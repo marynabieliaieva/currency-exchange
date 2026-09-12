@@ -6,13 +6,14 @@ interface CancelForfeitureDialogProps {
   order: Order;
   onCancelled: (order: Order) => void;
   onDismiss: () => void;
+  onRejected?: () => void;
 }
 
 function sumFilled(order: Order): number {
   return order.fillEvents.reduce((total, fill) => total + fill.amount, 0);
 }
 
-export function CancelForfeitureDialog({ order, onCancelled, onDismiss }: CancelForfeitureDialogProps) {
+export function CancelForfeitureDialog({ order, onCancelled, onDismiss, onRejected }: CancelForfeitureDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmedForfeiture, setConfirmedForfeiture] = useState(false);
@@ -32,6 +33,7 @@ export function CancelForfeitureDialog({ order, onCancelled, onDismiss }: Cancel
       onCancelled(cancelled);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel order");
+      onRejected?.();
     } finally {
       setSubmitting(false);
     }

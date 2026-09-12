@@ -84,6 +84,7 @@ export function ManageOrdersPage() {
           order={dialog.order}
           onCancelled={handleOrderUpdated}
           onDismiss={() => setDialog(null)}
+          onRejected={refreshOrders}
         />
       )}
       {dialog?.kind === "cancel-forfeiture" && (
@@ -91,6 +92,7 @@ export function ManageOrdersPage() {
           order={dialog.order}
           onCancelled={handleOrderUpdated}
           onDismiss={() => setDialog(null)}
+          onRejected={refreshOrders}
         />
       )}
       {dialog?.kind === "fill" && (
@@ -98,6 +100,7 @@ export function ManageOrdersPage() {
           order={dialog.order}
           onFilled={handleOrderUpdated}
           onDismiss={() => setDialog(null)}
+          onRejected={refreshOrders}
         />
       )}
       {dialog?.kind === "amend" && (
@@ -105,6 +108,7 @@ export function ManageOrdersPage() {
           order={dialog.order}
           onAmended={handleOrderUpdated}
           onDismiss={() => setDialog(null)}
+          onRejected={refreshOrders}
         />
       )}
     </div>
