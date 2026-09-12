@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { listOrders } from "../api/orderApi";
+import { CancelDialog } from "../components/CancelDialog";
+import { CancelForfeitureDialog } from "../components/CancelForfeitureDialog";
 import { ManageOrdersList } from "../components/ManageOrdersList";
 import type { Order } from "../types/order";
+
+type DialogState = { kind: "cancel" | "cancel-forfeiture" | "fill" | "amend"; order: Order } | null;
 
 export function ManageOrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<DialogState>(null);
 
   async function refreshOrders() {
     try {
@@ -22,7 +27,7 @@ export function ManageOrdersPage() {
   }, []);
 
   function handleCancel(order: Order) {
-    void order;
+    setDialog({ kind: order.fillEvents.length > 0 ? "cancel-forfeiture" : "cancel", order });
   }
 
   function handleFill(order: Order) {
@@ -31,6 +36,11 @@ export function ManageOrdersPage() {
 
   function handleAmend(order: Order) {
     void order;
+  }
+
+  function handleOrderUpdated(updated: Order) {
+    setOrders((current) => current?.map((o) => (o.id === updated.id ? updated : o)) ?? current);
+    setDialog(null);
   }
 
   return (
@@ -44,6 +54,20 @@ export function ManageOrdersPage() {
           onCancel={handleCancel}
           onFill={handleFill}
           onAmend={handleAmend}
+        />
+      )}
+      {dialog?.kind === "cancel" && (
+        <CancelDialog
+          order={dialog.order}
+          onCancelled={handleOrderUpdated}
+          onDismiss={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "cancel-forfeiture" && (
+        <CancelForfeitureDialog
+          order={dialog.order}
+          onCancelled={handleOrderUpdated}
+          onDismiss={() => setDialog(null)}
         />
       )}
     </div>

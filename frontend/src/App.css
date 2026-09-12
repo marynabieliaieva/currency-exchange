@@ -27,6 +27,36 @@
   border: 1px solid #b7ebc6;
 }
 
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90%;
+  font-family: system-ui, sans-serif;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.dialog-actions button {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
 .order-entry-form {
   display: flex;
   flex-direction: column;
