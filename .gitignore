@@ -15,3 +15,7 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# SDD (per-developer)
+.claude/*.local.md
+.worktrees/
