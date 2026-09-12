@@ -12,6 +12,7 @@ import com.currencyexchange.orderentry.exception.InvalidAmendException;
 import com.currencyexchange.orderentry.exception.InvalidFillAmountException;
 import com.currencyexchange.orderentry.exception.OrderNotFoundException;
 import com.currencyexchange.orderentry.exception.OrderNotOpenException;
+import com.currencyexchange.orderentry.model.FillEvent;
 import com.currencyexchange.orderentry.model.Order;
 import com.currencyexchange.orderentry.model.OrderStatus;
 import com.currencyexchange.orderentry.repository.OrderMongoOperations;
@@ -43,26 +44,29 @@ public class OrderService {
     }
 
     public List<Order> listOrders() {
-        return orderRepository.findAllByOrderByCreatedAtDesc();
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(OrderService::withRemainingAmountFallback)
+                .toList();
     }
 
     public Order getOrder(String id) {
-        return orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        return withRemainingAmountFallback(orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id)));
     }
 
     public Order cancelOrder(String id) {
-        return orderMongoOperations.tryCancel(id)
+        return withRemainingAmountFallback(orderMongoOperations.tryCancel(id)
                 .orElseGet(() -> {
                     throw rejectionFor(id);
-                });
+                }));
     }
 
     public Order fillOrder(String id, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal normalizedAmount = normalize(amount);
+        if (normalizedAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidFillAmountException("amount must be greater than 0", InvalidFillAmountException.Reason.NOT_POSITIVE);
         }
-        return orderMongoOperations.tryFill(id, normalize(amount))
+        return orderMongoOperations.tryFill(id, normalizedAmount)
                 .orElseGet(() -> {
                     Order current = getOrder(id);
                     if (current.getStatus() != OrderStatus.PENDING) {
@@ -86,11 +90,23 @@ public class OrderService {
                     if (current.getStatus() != OrderStatus.PENDING) {
                         throw new OrderNotOpenException(id, current.getStatus().name());
                     }
-                    BigDecimal effectiveRemaining = current.getRemainingAmount() != null
-                            ? current.getRemainingAmount() : current.getAmount();
+                    BigDecimal ceiling = current.getAmount().subtract(totalFilled(current));
                     throw new InvalidAmendException(
-                            "Remaining amount must be greater than zero and at most " + effectiveRemaining.stripTrailingZeros().toPlainString());
+                            "Remaining amount must be greater than zero and at most " + ceiling.stripTrailingZeros().toPlainString());
                 });
+    }
+
+    private static BigDecimal totalFilled(Order order) {
+        return order.getFillEvents().stream()
+                .map(FillEvent::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static Order withRemainingAmountFallback(Order order) {
+        if (order.getRemainingAmount() == null) {
+            order.setRemainingAmount(order.getAmount());
+        }
+        return order;
     }
 
     private RuntimeException rejectionFor(String id) {

@@ -1,30 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ManageOrdersPage } from "./pages/ManageOrdersPage";
-import { OrderEntryPage } from "./pages/OrderEntryPage";
+import { AppRoutes } from "./AppRoutes";
 import * as orderApi from "./api/orderApi";
 
 vi.mock("./api/orderApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api/orderApi")>();
   return { ...actual, listOrders: vi.fn() };
 });
-
-function Nav() {
-  return (
-    <MemoryRouter initialEntries={["/"]}>
-      <nav className="app-nav">
-        <Link to="/">Order Entry</Link>
-        <Link to="/manage-orders">Manage Orders</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<OrderEntryPage />} />
-        <Route path="/manage-orders" element={<ManageOrdersPage />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
 
 describe("App routing — AC-15 each screen reachable at its own distinct address", () => {
   afterEach(() => {
@@ -34,10 +18,7 @@ describe("App routing — AC-15 each screen reachable at its own distinct addres
   it("renders the order entry page at /", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<OrderEntryPage />} />
-          <Route path="/manage-orders" element={<ManageOrdersPage />} />
-        </Routes>
+        <AppRoutes />
       </MemoryRouter>,
     );
 
@@ -49,21 +30,32 @@ describe("App routing — AC-15 each screen reachable at its own distinct addres
 
     render(
       <MemoryRouter initialEntries={["/manage-orders"]}>
-        <Routes>
-          <Route path="/" element={<OrderEntryPage />} />
-          <Route path="/manage-orders" element={<ManageOrdersPage />} />
-        </Routes>
+        <AppRoutes />
       </MemoryRouter>,
     );
 
     expect(await screen.findByRole("heading", { name: /Manage Orders/i })).toBeInTheDocument();
   });
 
+  it("falls back to the order entry page for an unknown path", () => {
+    render(
+      <MemoryRouter initialEntries={["/does-not-exist"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: /New Order/i })).toBeInTheDocument();
+  });
+
   it("switches between screens via the nav links", async () => {
     vi.mocked(orderApi.listOrders).mockResolvedValue([]);
     const user = userEvent.setup();
 
-    render(<Nav />);
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole("heading", { name: /New Order/i })).toBeInTheDocument();
 

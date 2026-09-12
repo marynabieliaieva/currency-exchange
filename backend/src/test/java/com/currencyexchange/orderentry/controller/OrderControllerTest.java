@@ -125,6 +125,22 @@ class OrderControllerTest {
     }
 
     @Test
+    void amendOrderReturns400WhenBodyHasNoFields() throws Exception {
+        mockMvc.perform(patch("/api/orders/id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void amendOrderReturns400WhenRemainingAmountIsNegative() throws Exception {
+        mockMvc.perform(patch("/api/orders/id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"remainingAmount\": -5}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void amendOrderReturns409WithNotPendingCodeWhenClosed() throws Exception {
         when(orderService.amendOrder(anyString(), any(), any()))
                 .thenThrow(new OrderNotOpenException("id-1", "FILLED"));

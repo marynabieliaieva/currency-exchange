@@ -83,6 +83,7 @@ describe("ManageOrdersPage — AC-01 cancel with no fills", () => {
 
     expect(mockedCancelOrder).toHaveBeenCalledWith("order-1");
     expect(await screen.findByRole("row", { name: /CANCELLED/i })).toBeInTheDocument();
+    expect(screen.getByText(/Order cancelled/i)).toBeInTheDocument();
   });
 });
 
@@ -114,6 +115,7 @@ describe("ManageOrdersPage — AC-02 cancel with forfeiture", () => {
     expect(mockedCancelOrder).toHaveBeenCalledWith("order-1");
     const cancelledRow = await screen.findByRole("row", { name: /CANCELLED/i });
     expect(within(cancelledRow).getByText("60")).toBeInTheDocument();
+    expect(screen.getByText(/Order cancelled/i)).toBeInTheDocument();
   });
 });
 
@@ -139,6 +141,7 @@ describe("ManageOrdersPage — AC-03/AC-04 fill", () => {
 
     expect(mockedFillOrder).toHaveBeenCalledWith("order-1", 100);
     expect(await screen.findByRole("row", { name: /FILLED/i })).toBeInTheDocument();
+    expect(screen.getByText(/Fill recorded/i)).toBeInTheDocument();
   });
 
   it("rejects a fill that exceeds the remaining amount and leaves the remaining amount unchanged", async () => {
@@ -204,6 +207,7 @@ describe("ManageOrdersPage — AC-06/AC-07/AC-12 amend", () => {
     const updatedRow = await screen.findByRole("row", { name: /EUR\/USD/i });
     expect(within(updatedRow).getByText("1.5")).toBeInTheDocument();
     expect(within(updatedRow).getByText("80")).toBeInTheDocument();
+    expect(screen.getByText(/Order amended/i)).toBeInTheDocument();
   });
 
   it("only ever changes the remaining amount for an order with fill events, never the already-filled portion (AC-07)", async () => {
@@ -241,8 +245,8 @@ describe("ManageOrdersPage — AC-06/AC-07/AC-12 amend", () => {
     mockedAmendOrder.mockRejectedValue(
       new ApiRequestError(
         "Remaining amount must be greater than 0 and at most 100",
-        400,
-        "order.invalid_amend",
+        409,
+        "order.amend_out_of_range",
       ),
     );
 

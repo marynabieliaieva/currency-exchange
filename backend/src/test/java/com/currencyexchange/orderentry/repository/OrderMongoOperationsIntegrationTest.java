@@ -131,4 +131,61 @@ class OrderMongoOperationsIntegrationTest extends IntegrationTestSupport {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    void tryAmendCeilingIsOriginalMinusFilledNotCurrentRemaining() {
+        // amount=1000, filled=400 (ceiling=600), but a prior amend already pulled remainingAmount
+        // down to 300 — the ceiling must stay 600 (amount - filled), not collapse to 300.
+        orderMongoOperations = new OrderMongoOperations(mongoTemplate);
+        Order order = new Order("EUR/USD", OrderSide.BUY, OrderType.TAKE_PROFIT,
+                new BigDecimal("1.08500000"), new BigDecimal("1000"));
+        order.setRemainingAmount(new BigDecimal("300"));
+        order.setFillEvents(List.of(new FillEvent(new BigDecimal("400"), Instant.now())));
+        order = mongoTemplate.save(order);
+
+        Optional<Order> allowed = orderMongoOperations.tryAmend(order.getId(), null, new BigDecimal("500"));
+        assertThat(allowed).isPresent();
+        assertThat(allowed.get().getRemainingAmount()).isEqualByComparingTo(new BigDecimal("500"));
+
+        Optional<Order> rejected = orderMongoOperations.tryAmend(order.getId(), null, new BigDecimal("601"));
+        assertThat(rejected).isEmpty();
+    }
+
+    @Test
+    void tryCancelReturnsEmptyForMalformedId() {
+        orderMongoOperations = new OrderMongoOperations(mongoTemplate);
+
+        assertThat(orderMongoOperations.tryCancel("not-a-valid-object-id")).isEmpty();
+    }
+
+    @Test
+    void tryFillReturnsEmptyForMalformedId() {
+        orderMongoOperations = new OrderMongoOperations(mongoTemplate);
+
+        assertThat(orderMongoOperations.tryFill("not-a-valid-object-id", new BigDecimal("100"))).isEmpty();
+    }
+
+    @Test
+    void tryAmendReturnsEmptyForMalformedId() {
+        orderMongoOperations = new OrderMongoOperations(mongoTemplate);
+
+        assertThat(orderMongoOperations.tryAmend("not-a-valid-object-id", null, new BigDecimal("100"))).isEmpty();
+    }
+
+    @Test
+    void tryCancelLeavesRemainingAmountUnchangedWhenOrderHasFills() {
+        orderMongoOperations = new OrderMongoOperations(mongoTemplate);
+        Order order = new Order("EUR/USD", OrderSide.BUY, OrderType.TAKE_PROFIT,
+                new BigDecimal("1.08500000"), new BigDecimal("1000"));
+        order.setRemainingAmount(new BigDecimal("600"));
+        order.setFillEvents(List.of(new FillEvent(new BigDecimal("400"), Instant.now())));
+        order = mongoTemplate.save(order);
+
+        Optional<Order> result = orderMongoOperations.tryCancel(order.getId());
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(result.get().getRemainingAmount()).isEqualByComparingTo(new BigDecimal("600"));
+        assertThat(result.get().getFillEvents()).hasSize(1);
+    }
 }

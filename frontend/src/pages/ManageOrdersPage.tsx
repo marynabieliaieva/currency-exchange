@@ -7,12 +7,28 @@ import { FillDialog } from "../components/FillDialog";
 import { ManageOrdersList } from "../components/ManageOrdersList";
 import type { Order } from "../types/order";
 
-type DialogState = { kind: "cancel" | "cancel-forfeiture" | "fill" | "amend"; order: Order } | null;
+type DialogKind = "cancel" | "cancel-forfeiture" | "fill" | "amend";
+type DialogState = { kind: DialogKind; order: Order } | null;
+
+function confirmationMessageFor(kind: DialogKind | undefined, updated: Order): string {
+  switch (kind) {
+    case "cancel":
+    case "cancel-forfeiture":
+      return `Order cancelled: ${updated.currencyPair} ${updated.side} ${updated.amount}`;
+    case "fill":
+      return `Fill recorded: ${updated.currencyPair} ${updated.side} — remaining ${updated.remainingAmount}`;
+    case "amend":
+      return `Order amended: ${updated.currencyPair} ${updated.side} — trigger ${updated.triggerPrice}, remaining ${updated.remainingAmount}`;
+    default:
+      return "Order updated";
+  }
+}
 
 export function ManageOrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
 
   async function refreshOrders() {
     try {
@@ -29,19 +45,23 @@ export function ManageOrdersPage() {
   }, []);
 
   function handleCancel(order: Order) {
+    setConfirmation(null);
     setDialog({ kind: order.fillEvents.length > 0 ? "cancel-forfeiture" : "cancel", order });
   }
 
   function handleFill(order: Order) {
+    setConfirmation(null);
     setDialog({ kind: "fill", order });
   }
 
   function handleAmend(order: Order) {
+    setConfirmation(null);
     setDialog({ kind: "amend", order });
   }
 
   function handleOrderUpdated(updated: Order) {
     setOrders((current) => current?.map((o) => (o.id === updated.id ? updated : o)) ?? current);
+    setConfirmation(confirmationMessageFor(dialog?.kind, updated));
     setDialog(null);
   }
 
@@ -49,6 +69,7 @@ export function ManageOrdersPage() {
     <div className="page">
       <h1>Manage Orders</h1>
       {error && <p className="form-error">{error}</p>}
+      {!error && confirmation && <p className="inline-status inline-status-success">{confirmation}</p>}
       {!error && orders === null && <p>Loading orders...</p>}
       {!error && orders !== null && (
         <ManageOrdersList

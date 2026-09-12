@@ -45,12 +45,18 @@ public class OrderMongoOperations {
     }
 
     public Optional<Order> tryCancel(String id) {
+        if (!ObjectId.isValid(id)) {
+            return Optional.empty();
+        }
         Document filter = pendingFilter(id);
         Document update = new Document("$set", new Document("status", OrderStatus.CANCELLED.name()));
         return findAndModify(filter, update);
     }
 
     public Optional<Order> tryFill(String id, BigDecimal amount) {
+        if (!ObjectId.isValid(id)) {
+            return Optional.empty();
+        }
         String amountStr = amount.toPlainString();
 
         Document filter = pendingFilter(id).append("$expr", gte(effectiveRemaining(), toDecimal(amountStr)));
@@ -72,13 +78,16 @@ public class OrderMongoOperations {
     }
 
     public Optional<Order> tryAmend(String id, BigDecimal newPrice, BigDecimal newRemaining) {
+        if (!ObjectId.isValid(id)) {
+            return Optional.empty();
+        }
         if (newRemaining != null && newRemaining.compareTo(BigDecimal.ZERO) <= 0) {
             return Optional.empty();
         }
 
         Document filter = pendingFilter(id);
         if (newRemaining != null) {
-            filter.append("$expr", gte(effectiveRemaining(), toDecimal(newRemaining.toPlainString())));
+            filter.append("$expr", gte(amendCeiling(), toDecimal(newRemaining.toPlainString())));
         }
 
         Document set = new Document();
@@ -97,6 +106,21 @@ public class OrderMongoOperations {
 
     private static Document effectiveRemaining() {
         return toDecimal(new Document("$ifNull", List.of("$remainingAmount", "$amount")));
+    }
+
+    /**
+     * The amend ceiling per AC-07/AC-12 is (original amount - already-filled), not the order's
+     * current {@code remainingAmount} — the latter also shrinks on a downward amend, which would
+     * otherwise make the allowed range collapse monotonically across successive amends.
+     */
+    private static Document amendCeiling() {
+        return new Document("$subtract", List.of(toDecimal("$amount"), filledAmount()));
+    }
+
+    private static Document filledAmount() {
+        return new Document("$reduce", new Document("input", new Document("$ifNull", List.of("$fillEvents", List.of())))
+                .append("initialValue", toDecimal("0"))
+                .append("in", new Document("$add", List.of("$$value", toDecimal("$$this.amount")))));
     }
 
     private static Document toDecimal(Object value) {

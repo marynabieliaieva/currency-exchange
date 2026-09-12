@@ -144,6 +144,14 @@ class OrderServiceTest {
     }
 
     @Test
+    void fillOrderRejectsSubScaleAmountThatNormalizesToZeroBeforeAnyDbCall() {
+        OrderService service = service();
+
+        assertThatThrownBy(() -> service.fillOrder("id-1", new BigDecimal("0.000000001")))
+                .isInstanceOf(InvalidFillAmountException.class);
+    }
+
+    @Test
     void fillOrderReturnsUpdatedOrderOnSuccess() {
         OrderService service = service();
         Order filled = pendingOrder("id-1", new BigDecimal("1000"), new BigDecimal("600"));
@@ -234,5 +242,44 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.amendOrder("id-1", null, new BigDecimal("700")))
                 .isInstanceOf(InvalidAmendException.class);
+    }
+
+    @Test
+    void amendOrderRejectionMessageUsesAmountMinusFilledNotCurrentRemaining() {
+        OrderService service = service();
+        when(orderMongoOperations.tryAmend(eq("id-1"), any(), any())).thenReturn(Optional.empty());
+        // A prior downward amend left remainingAmount at 300, but only 400 has actually been
+        // filled — the reported ceiling must be 1000-400=600, not the stale 300.
+        Order stillPending = pendingOrder("id-1", new BigDecimal("1000"), new BigDecimal("300"));
+        stillPending.setFillEvents(List.of(new FillEvent(new BigDecimal("400"), Instant.now())));
+        when(orderRepository.findById("id-1")).thenReturn(Optional.of(stillPending));
+
+        assertThatThrownBy(() -> service.amendOrder("id-1", null, new BigDecimal("601")))
+                .isInstanceOf(InvalidAmendException.class)
+                .hasMessageContaining("600");
+    }
+
+    // --- AC-11 read-path fallback ---
+
+    @Test
+    void getOrderAppliesRemainingAmountFallbackWhenNeverRecorded() {
+        OrderService service = service();
+        Order legacy = pendingOrder("id-1", new BigDecimal("1000"), null);
+        when(orderRepository.findById("id-1")).thenReturn(Optional.of(legacy));
+
+        Order result = service.getOrder("id-1");
+
+        assertThat(result.getRemainingAmount()).isEqualByComparingTo(new BigDecimal("1000"));
+    }
+
+    @Test
+    void listOrdersAppliesRemainingAmountFallbackWhenNeverRecorded() {
+        OrderService service = service();
+        Order legacy = pendingOrder("id-1", new BigDecimal("1000"), null);
+        when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(legacy));
+
+        List<Order> result = service.listOrders();
+
+        assertThat(result.get(0).getRemainingAmount()).isEqualByComparingTo(new BigDecimal("1000"));
     }
 }
