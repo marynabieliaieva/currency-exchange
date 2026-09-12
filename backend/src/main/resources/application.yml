@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: order-entry
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/currency_exchange}
+
+app:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
