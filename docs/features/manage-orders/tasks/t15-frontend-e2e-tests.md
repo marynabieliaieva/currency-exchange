@@ -9,7 +9,7 @@ files_hint: ["frontend/package.json", "frontend/vitest.config.ts", "frontend/src
 owner: "Marisha"
 estimate: "L"
 context_budget: "L"   # justified: this task's DoD is "one e2e-through-UI test per AC" (14 of the 15 spec ACs), so its acs list and AC section are necessarily broad — splitting it would just move the same coverage list into several smaller files with no reduction in total context
-status: "todo"
+status: "done"
 ---
 
 # T15 — Add a frontend test runner and e2e-through-UI tests for every action
@@ -104,12 +104,12 @@ Every AC below gets at least one e2e-through-UI test (Given/When/Then quoted ver
 
 ## Checklist
 
-- [ ] Add a test runner + Testing Library to `frontend/package.json` (e.g. Vitest + `@testing-library/react`, matching the existing Vite toolchain) and a `test` npm script
-- [ ] `frontend/vitest.config.ts` (or equivalent) wired to the existing Vite config
-- [ ] `OrderEntryPage.test.tsx` — covers AC-09 (creation-only, no list/Cancel) and the create-success banner
-- [ ] `ManageOrdersPage.test.tsx` — covers AC-14 (mixed-status list, gated buttons), AC-01/AC-02 (cancel + forfeiture), AC-03/AC-04 (fill happy path + rejections), AC-06/AC-07/AC-12 (amend happy path + rejections), AC-08 (expand fill trail), AC-10 (closed-order rejection surfaced in the UI)
-- [ ] A routing test (can live in either file, or a small `App.test.tsx`) covers AC-15 — both routes render their page, nav link switches between them
-- [ ] Mock the `orderApi.ts` calls (or run against a lightweight fetch mock) rather than requiring a live backend for these tests
+- [x] Add a test runner + Testing Library to `frontend/package.json` (e.g. Vitest + `@testing-library/react`, matching the existing Vite toolchain) and a `test` npm script
+- [x] `frontend/vitest.config.ts` (or equivalent) wired to the existing Vite config
+- [x] `OrderEntryPage.test.tsx` — covers AC-09 (creation-only, no list/Cancel) and the create-success banner
+- [x] `ManageOrdersPage.test.tsx` — covers AC-14 (mixed-status list, gated buttons), AC-01/AC-02 (cancel + forfeiture), AC-03/AC-04 (fill happy path + rejections), AC-06/AC-07/AC-12 (amend happy path + rejections), AC-08 (expand fill trail), AC-10 (closed-order rejection surfaced in the UI)
+- [x] A routing test (can live in either file, or a small `App.test.tsx`) covers AC-15 — both routes render their page, nav link switches between them
+- [x] Mock the `orderApi.ts` calls (or run against a lightweight fetch mock) rather than requiring a live backend for these tests
 
 ## Edge cases
 
@@ -120,6 +120,6 @@ Every AC below gets at least one e2e-through-UI test (Given/When/Then quoted ver
 
 ## Definition of Done
 
-- [ ] `npm test` runs and every AC-0X test above passes
-- [ ] the frontend has a working test runner wired into `npm test` where none existed before
-- [ ] lint clean
+- [x] `npm test` runs and every AC-0X test above passes
+- [x] the frontend has a working test runner wired into `npm test` where none existed before
+- [x] lint clean (no ESLint config exists in this repo yet; `tsc -b` and `vite build` are clean)
