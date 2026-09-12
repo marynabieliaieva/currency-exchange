@@ -1,0 +1,210 @@
+{
+  "slug": "manage-orders",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Extend Order model with FILLED status, remainingAmount, and embedded FillEvent",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-11"],
+      "dod": "Order/OrderStatus/FillEvent compile with the new fields and existing OrderServiceTest still passes unmodified.",
+      "files_hint": [
+        "backend/src/main/java/com/currencyexchange/orderentry/model/Order.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/model/OrderStatus.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/model/FillEvent.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t1-extend-order-model.md"
+    },
+    {
+      "id": "T2",
+      "title": "Add MongoTemplate-based atomic conditional update helpers for cancel/fill/amend",
+      "layer": "infra",
+      "deps": ["T1"],
+      "acs": ["AC-05", "AC-13"],
+      "dod": "A unit test against each of the three guarded update methods (cancel/fill/amend) shows the write applies only when its precondition holds and returns no-match otherwise.",
+      "files_hint": [
+        "backend/src/main/java/com/currencyexchange/orderentry/repository/OrderMongoOperations.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/repository/OrderRepository.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t2-atomic-update-helpers.md"
+    },
+    {
+      "id": "T3",
+      "title": "Implement guarded cancelOrder, fillOrder, and amendOrder in OrderService",
+      "layer": "app",
+      "deps": ["T2"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-07", "AC-10", "AC-11", "AC-12", "AC-13"],
+      "dod": "Unit tests (mocked repository, extending OrderServiceTest's existing style) cover the happy path and every rejection reason for cancel, fill, and amend, including the AC-11 legacy-order fallback.",
+      "files_hint": [
+        "backend/src/main/java/com/currencyexchange/orderentry/service/OrderService.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/exception/OrderNotOpenException.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/exception/InvalidFillAmountException.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/exception/InvalidAmendException.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t3-order-service-actions.md"
+    },
+    {
+      "id": "T4",
+      "title": "Add fill/amend endpoints and extend cancel + exception handling in OrderController",
+      "layer": "ports",
+      "deps": ["T3"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-06", "AC-07", "AC-10", "AC-12", "AC-13"],
+      "dod": "A controller-layer test (MockMvc or equivalent) confirms POST /api/orders/{id}/fills and PATCH /api/orders/{id} return the spec'd status codes and ApiError.code for every AC-04/AC-10/AC-12 rejection, and DELETE keeps working for AC-01/AC-02.",
+      "files_hint": [
+        "backend/src/main/java/com/currencyexchange/orderentry/controller/OrderController.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/dto/FillRequest.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/dto/AmendRequest.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/dto/ApiError.java",
+        "backend/src/main/java/com/currencyexchange/orderentry/exception/GlobalExceptionHandler.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t4-controller-endpoints.md"
+    },
+    {
+      "id": "T5",
+      "title": "Add an integration-test harness (ephemeral MongoDB) for the backend",
+      "layer": "tests",
+      "deps": [],
+      "acs": [],
+      "dod": "A trivial integration test boots the ephemeral MongoDB, saves and reads back an Order through the real OrderRepository, and passes in mvn test.",
+      "files_hint": [
+        "backend/pom.xml",
+        "backend/src/test/java/com/currencyexchange/orderentry/IntegrationTestSupport.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t5-integration-test-harness.md"
+    },
+    {
+      "id": "T6",
+      "title": "Write concurrency integration tests for overfill and cross-action races",
+      "layer": "tests",
+      "deps": ["T4", "T5"],
+      "acs": ["AC-05", "AC-13"],
+      "dod": "An integration test firing two concurrent fills, and a fill racing a cancel, against the same order asserts exactly one action succeeds and the order's remaining amount is never negative or inconsistent.",
+      "files_hint": [
+        "backend/src/test/java/com/currencyexchange/orderentry/service/OrderConcurrencyIT.java"
+      ],
+      "file": "docs/features/manage-orders/tasks/t6-concurrency-integration-tests.md"
+    },
+    {
+      "id": "T7",
+      "title": "Introduce react-router and split App.tsx into two routed page shells",
+      "layer": "wiring",
+      "deps": [],
+      "acs": ["AC-15"],
+      "dod": "Navigating to / renders OrderEntryPage and /manage-orders renders ManageOrdersPage, each at its own URL, with a working nav link between them; npm run build passes.",
+      "files_hint": [
+        "frontend/package.json",
+        "frontend/src/App.tsx",
+        "frontend/src/pages/OrderEntryPage.tsx",
+        "frontend/src/pages/ManageOrdersPage.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t7-router-page-shells.md"
+    },
+    {
+      "id": "T8",
+      "title": "Extend the API client and TS types for fill/amend/remainingAmount/FillEvent",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [],
+      "dod": "orderApi.ts exposes fillOrder(id, amount) and amendOrder(id, {price?, remainingAmount?}) typed against the extended Order/FillEvent types, and tsc -b passes.",
+      "files_hint": [
+        "frontend/src/api/orderApi.ts",
+        "frontend/src/types/order.ts"
+      ],
+      "file": "docs/features/manage-orders/tasks/t8-api-client-types.md"
+    },
+    {
+      "id": "T9",
+      "title": "Make the order entry page creation-only",
+      "layer": "ui",
+      "deps": ["T7"],
+      "acs": ["AC-09"],
+      "dod": "OrderEntryPage renders only the creation form (no order list, no Cancel action) and shows an inline success confirmation on create.",
+      "files_hint": [
+        "frontend/src/pages/OrderEntryPage.tsx",
+        "frontend/src/App.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t9-entry-page-creation-only.md"
+    },
+    {
+      "id": "T10",
+      "title": "Build the Manage Orders list screen with status-gated actions",
+      "layer": "ui",
+      "deps": ["T7", "T8"],
+      "acs": ["AC-14"],
+      "dod": "ManageOrdersPage lists every order regardless of status via GET /api/orders, with Cancel/Fill/Amend buttons enabled only on PENDING rows and disabled on CANCELLED/FILLED rows, plus loading/empty/error states.",
+      "files_hint": [
+        "frontend/src/pages/ManageOrdersPage.tsx",
+        "frontend/src/components/ManageOrdersList.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t10-manage-orders-list.md"
+    },
+    {
+      "id": "T11",
+      "title": "Build the Cancel and Cancel-with-forfeiture dialogs",
+      "layer": "ui",
+      "deps": ["T10"],
+      "acs": ["AC-01", "AC-02"],
+      "dod": "Cancel on a fill-free order shows the simple confirm dialog (AC-01); Cancel on an order with fills shows the forfeiture dialog naming the amount that will be lost and requires a second confirmation (AC-02); both disable their buttons while the request is in flight.",
+      "files_hint": [
+        "frontend/src/components/CancelDialog.tsx",
+        "frontend/src/components/CancelForfeitureDialog.tsx",
+        "frontend/src/components/ManageOrdersList.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t11-cancel-dialogs.md"
+    },
+    {
+      "id": "T12",
+      "title": "Build the Fill entry dialog",
+      "layer": "ui",
+      "deps": ["T10"],
+      "acs": ["AC-03", "AC-04", "AC-05"],
+      "dod": "Submitting a valid fill amount records it and closes the dialog (AC-03); a zero/negative/overfilling amount, or a losing race (AC-05), shows an inline rejection naming the reason without closing the dialog (AC-04); the submit button is disabled while the request is in flight.",
+      "files_hint": [
+        "frontend/src/components/FillDialog.tsx",
+        "frontend/src/components/ManageOrdersList.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t12-fill-dialog.md"
+    },
+    {
+      "id": "T13",
+      "title": "Build the Amend entry dialog",
+      "layer": "ui",
+      "deps": ["T10"],
+      "acs": ["AC-06", "AC-07", "AC-12"],
+      "dod": "Submitting a valid price/remaining-amount amend updates the order and closes the dialog with the new values confirmed (AC-06, AC-07); a remaining amount above (amount - filled) or exactly zero is rejected inline with the allowed range shown (AC-12).",
+      "files_hint": [
+        "frontend/src/components/AmendDialog.tsx",
+        "frontend/src/components/ManageOrdersList.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t13-amend-dialog.md"
+    },
+    {
+      "id": "T14",
+      "title": "Build the expandable fill trail row",
+      "layer": "ui",
+      "deps": ["T10"],
+      "acs": ["AC-08"],
+      "dod": "Expanding a row with one or more fill events shows each fill's amount and timestamp, oldest first, with no separate network request; collapsing hides it again.",
+      "files_hint": [
+        "frontend/src/components/FillTrail.tsx",
+        "frontend/src/components/ManageOrdersList.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t14-fill-trail.md"
+    },
+    {
+      "id": "T15",
+      "title": "Add a frontend test runner and e2e-through-UI tests for every action",
+      "layer": "tests",
+      "deps": ["T9", "T11", "T12", "T13", "T14"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-07", "AC-08", "AC-09", "AC-10", "AC-12", "AC-13", "AC-14", "AC-15"],
+      "dod": "A test runner (e.g. Vitest + Testing Library) is wired into npm test, and one e2e-through-UI test per action (cancel/fill/amend/view-trail/entry-page-creation-only/navigation) exercises the UI against a running or mocked API and passes.",
+      "files_hint": [
+        "frontend/package.json",
+        "frontend/vitest.config.ts",
+        "frontend/src/pages/ManageOrdersPage.test.tsx",
+        "frontend/src/pages/OrderEntryPage.test.tsx"
+      ],
+      "file": "docs/features/manage-orders/tasks/t15-frontend-e2e-tests.md"
+    }
+  ]
+}
