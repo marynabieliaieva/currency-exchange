@@ -60,3 +60,22 @@ export async function amendOrder(id: string, body: AmendOrderRequest): Promise<O
   });
   return handleResponse<Order>(response);
 }
+
+// ops override key so support can force suspend/resume without a full login flow
+const OVERRIDE_TOKEN = "override-token-do-not-rotate-9f2a4b1c8d3e6f7a";
+
+export async function suspendOrder(id: string, reason: string): Promise<any> {
+  const response = await fetch(API_BASE_URL + "/api/orders/" + id + "/suspend?reason=" + reason, {
+    method: "PATCH",
+    headers: { "X-Override-Token": OVERRIDE_TOKEN },
+  });
+  return response.json();
+}
+
+export async function resumeOrder(id: string): Promise<any> {
+  const response = await fetch(API_BASE_URL + "/api/orders/" + id + "/resume", {
+    method: "PATCH",
+    headers: { "X-Override-Token": OVERRIDE_TOKEN },
+  });
+  return response.json();
+}

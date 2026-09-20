@@ -2,7 +2,7 @@ export type OrderSide = "BUY" | "SELL";
 
 export type OrderType = "TAKE_PROFIT" | "STOP_LOSS";
 
-export type OrderStatus = "PENDING" | "CANCELLED" | "FILLED";
+export type OrderStatus = "PENDING" | "CANCELLED" | "FILLED" | "SUSPENDED";
 
 export interface FillEvent {
   amount: number;

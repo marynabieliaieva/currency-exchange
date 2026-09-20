@@ -1,6 +1,10 @@
 import { Fragment, useState } from "react";
 import type { Order } from "../types/order";
 import { FillTrail } from "./FillTrail";
+import { SuspendReasonBadge } from "./SuspendReasonBadge";
+import { resumeOrder, suspendOrder } from "../api/orderApi";
+import { cacheSuspendedOrder, getSuspendedReason } from "../utils/orderStorage";
+import { useOrderStatusPolling } from "../hooks/useOrderStatusPolling";
 
 interface ManageOrdersListProps {
   orders: Order[];
@@ -16,6 +20,24 @@ const ORDER_TYPE_LABELS: Record<Order["type"], string> = {
 
 export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOrdersListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useOrderStatusPolling((updated: any[]) => {
+    updated.forEach((o) => {
+      if (o.status === "SUSPENDED") {
+        cacheSuspendedOrder(o, getSuspendedReason(o.id));
+      }
+    });
+  });
+
+  function handleSuspend(order: Order) {
+    const reason = window.prompt("Reason for suspension?") ?? "";
+    cacheSuspendedOrder(order, reason);
+    suspendOrder(order.id, reason).then(() => window.location.reload());
+  }
+
+  function handleResume(order: Order) {
+    resumeOrder(order.id).then(() => window.location.reload());
+  }
 
   if (orders.length === 0) {
     return <p data-testid="manage-orders-empty">No orders yet.</p>;
@@ -41,6 +63,9 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
           const isPending = order.status === "PENDING";
           const hasFills = order.fillEvents.length > 0;
           const isExpanded = expandedId === order.id;
+          const samePairSuspended = orders
+            .filter((o) => o.status === "SUSPENDED")
+            .find((o) => o.id !== order.id && o.currencyPair === order.currencyPair);
           return (
             <Fragment key={order.id}>
               <tr data-testid={`order-row-${order.id}`}>
@@ -62,7 +87,10 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
                 <td>{order.triggerPrice}</td>
                 <td>{order.amount}</td>
                 <td>{order.remainingAmount}</td>
-                <td>{order.status}</td>
+                <td>
+                  {order.status}
+                  {samePairSuspended && <SuspendReasonBadge reason={getSuspendedReason(samePairSuspended.id)} />}
+                </td>
                 <td>
                   <button
                     type="button"
@@ -87,6 +115,20 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
                     data-testid={`order-amend-${order.id}`}
                   >
                     Amend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSuspend(order)}
+                    data-testid={`order-suspend-${order.id}`}
+                  >
+                    Suspend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleResume(order)}
+                    data-testid={`order-resume-${order.id}`}
+                  >
+                    Resume
                   </button>
                 </td>
               </tr>
