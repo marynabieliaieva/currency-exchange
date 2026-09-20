@@ -1,0 +1,319 @@
+# Derived contract for manage-orders — DO NOT hand-edit fields/errors without updating the source:
+#   fields + constraints  ← data-model.md (Order/FillEvent entities)
+#   error responses       ← sad.md §6 sequence alt-branches
+#   endpoint list + shape ← spec.md §4 user stories / §5 acceptance criteria
+# Two skill defaults are deliberately overridden here — see api-sync-report.md "Deviations from
+# skill defaults" for the justification of each: no BearerAuth (repo has no auth at all — spec
+# §6.1 explicit decision), and the Error envelope matches the repo's existing ApiError shape
+# rather than the skill's {code,message,details} default (existing convention, extended
+# non-breakingly with a `code` field so new domain rejections can be told apart).
+openapi: 3.1.0
+
+info:
+  title: Order Management API
+  version: 0.2.0
+  description: |
+    Lets the Trader cancel, fill, or amend any pending order, and view each order's fill trail —
+    replacing the manual database edits that order entry alone cannot avoid. Extends the existing
+    order-entry API (POST/GET /api/orders) rather than introducing a new one; order entry itself
+    is unchanged and stays creation-only.
+
+servers:
+  - url: http://localhost:8080
+    description: Local
+
+# No BearerAuth: this app has no login, accounts, or ownership model anywhere in the codebase
+# (spec.md §1 decision override, §6.1 AuthZ/AuthN impact: none). Every operation is public.
+security: []
+
+paths:
+  /api/orders:
+    post:
+      summary: Create a new pending order
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrderCreate" }
+            example:
+              currencyPair: "EUR/USD"
+              side: "BUY"
+              type: "TAKE_PROFIT"
+              triggerPrice: 1.08500000
+              amount: 1000.00000000
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400":
+          $ref: "#/components/responses/Error"
+
+    get:
+      summary: List every order, regardless of status
+      description: >-
+        Returns orders in every status (PENDING, CANCELLED, FILLED) — AC-14. No pagination:
+        single-Trader tool, no filtered/sorted query justifies one yet (data-model.md §Indexes).
+      operationId: listOrders
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+
+  /api/orders/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+
+    get:
+      summary: Get one order, including its fill trail
+      description: >-
+        Used by the Manage Orders screen both to render the expanded fill trail (AC-08) and,
+        client-side, to compute the forfeiture amount shown in the cancel-confirmation dialog
+        when the order already has fills (AC-02) — no separate "how much is filled" endpoint.
+      operationId: getOrder
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "404":
+          $ref: "#/components/responses/Error"
+
+    delete:
+      summary: Cancel a pending order
+      description: >-
+        AC-01 (no fills) and AC-02 (fills already recorded — remainingAmount is left unchanged,
+        not reset, since it is now permanently unfillable). The Trader-facing forfeiture
+        confirmation itself is a client-side dialog (ux-flows.md), not a distinct API step.
+      operationId: cancelOrder
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Order is not PENDING (AC-10) — already CANCELLED or FILLED
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                timestamp: "2026-09-12T10:15:30Z"
+                status: 409
+                error: "Conflict"
+                messages: ["order is no longer open"]
+                code: "order.not_pending"
+
+    patch:
+      summary: Amend a pending order's trigger price and/or remaining amount
+      description: >-
+        AC-06 (happy path), AC-07 (never touches the already-filled portion or its fill events),
+        AC-12 (remaining amount must stay within (0, amount - filled]).
+      operationId: amendOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrderAmend" }
+            example:
+              triggerPrice: 1.09000000
+              remainingAmount: 500.00000000
+      responses:
+        "200":
+          description: Amend applied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: >-
+            Order is not PENDING (AC-10), or the requested remainingAmount is outside the
+            allowed range (AC-12) — never above (amount - already-filled), never exactly zero
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                timestamp: "2026-09-12T10:15:30Z"
+                status: 409
+                error: "Conflict"
+                messages: ["remainingAmount must be greater than 0 and at most 500.00000000"]
+                code: "order.amend_out_of_range"
+
+  /api/orders/{id}/fills:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+
+    post:
+      summary: Record a fill against a pending order
+      description: >-
+        AC-03 (happy path, marks FILLED when remainingAmount reaches zero), AC-04 (rejects a
+        non-positive or overfilling amount), AC-05 (two near-simultaneous fills are serialized by
+        the atomic conditional update at the data layer — sad.md §6 Critical flow 1 — never both
+        applied when their combined amount would exceed what's remaining).
+      operationId: recordFill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FillCreate" }
+            example:
+              amount: 250.00000000
+      responses:
+        "201":
+          description: Fill recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400":
+          description: >-
+            amount is not a positive number after scale-8 normalization. Raised by OrderService,
+            not DTO bean validation (unlike OrderCreate) — this is deliberate: it must re-check the
+            *normalized* amount, since a sub-scale positive value (e.g. 0.000000001) is legal at
+            the bean-validation layer but rounds to zero, so only a post-normalization check catches
+            it. The service-level check also lets this response carry the domain `code` below;
+            bean validation never sets `code` (see GlobalExceptionHandler.handleValidation).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                timestamp: "2026-09-12T10:15:30Z"
+                status: 400
+                error: "Validation failed"
+                messages: ["amount must be greater than 0"]
+                code: "order.invalid_fill_amount"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Order is not PENDING (AC-10), or amount exceeds what's remaining (AC-04)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                notPending:
+                  value:
+                    timestamp: "2026-09-12T10:15:30Z"
+                    status: 409
+                    error: "Conflict"
+                    messages: ["order is no longer open"]
+                    code: "order.not_pending"
+                exceedsRemaining:
+                  value:
+                    timestamp: "2026-09-12T10:15:30Z"
+                    status: 409
+                    error: "Conflict"
+                    messages: ["amount exceeds what's left on the order"]
+                    code: "order.fill_exceeds_remaining"
+
+components:
+  responses:
+    Error:
+      description: Error — unified envelope (existing repo shape, see components.schemas.Error)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    # Matches the repo's existing ApiError record (dto/ApiError.java) verbatim, plus one additive
+    # field: `code`, needed so the Manage Orders UI can react differently to order.not_pending vs
+    # order.fill_exceeds_remaining vs order.amend_out_of_range (AC-04/AC-10/AC-12 each require a
+    # distinct, named reason). Existing endpoints keep working unchanged — `code` is optional.
+    Error:
+      type: object
+      required: [timestamp, status, error, messages]
+      additionalProperties: false
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        messages:
+          type: array
+          items: { type: string }
+        code:
+          type: [string, "null"]
+          description: >-
+            neutral module.error_name convention, e.g. order.not_pending. Absent/null on
+            errors that predate this feature (validation, not-found) until they're migrated.
+          pattern: "^[a-z_]+\\.[a-z_]+$"
+
+    FillEvent:
+      type: object
+      required: [amount, timestamp]
+      additionalProperties: false
+      properties:
+        amount: { type: number, format: double, exclusiveMinimum: 0 }
+        timestamp: { type: string, format: date-time }
+
+    Order:
+      type: object
+      required: [id, currencyPair, side, type, triggerPrice, amount, remainingAmount, status, fillEvents, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        currencyPair: { type: string, pattern: "^[A-Z]{3}/[A-Z]{3}$" }
+        side: { type: string, enum: [BUY, SELL] }
+        type: { type: string, enum: [TAKE_PROFIT, STOP_LOSS] }
+        triggerPrice: { type: number, format: double, exclusiveMinimum: 0 }
+        amount: { type: number, format: double, exclusiveMinimum: 0 }
+        remainingAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: >-
+            Always populated in API responses — the read-path fallback (AC-11: equals `amount`
+            for a legacy order with no remainingAmount ever recorded) is applied server-side, so
+            this field is never null on the wire even though it is nullable in storage.
+        status: { type: string, enum: [PENDING, CANCELLED, FILLED] }
+        fillEvents:
+          type: array
+          items: { $ref: "#/components/schemas/FillEvent" }
+          description: append-only, oldest-first (AC-08)
+        createdAt: { type: string, format: date-time }
+
+    OrderCreate:
+      type: object
+      required: [currencyPair, side, type, triggerPrice, amount]
+      additionalProperties: false
+      properties:
+        currencyPair: { type: string, pattern: "^[A-Z]{3}/[A-Z]{3}$" }
+        side: { type: string, enum: [BUY, SELL] }
+        type: { type: string, enum: [TAKE_PROFIT, STOP_LOSS] }
+        triggerPrice: { type: number, format: double, exclusiveMinimum: 0 }
+        amount: { type: number, format: double, exclusiveMinimum: 0 }
+
+    FillCreate:
+      type: object
+      required: [amount]
+      additionalProperties: false
+      properties:
+        amount: { type: number, format: double, exclusiveMinimum: 0 }
+
+    OrderAmend:
+      type: object
+      description: Partial — at least one of the two fields must be present.
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        triggerPrice: { type: number, format: double, exclusiveMinimum: 0 }
+        remainingAmount:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          description: "Must be <= (amount - already-filled); never exactly 0 — use cancel instead (AC-12)."

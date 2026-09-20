@@ -1,0 +1,22 @@
+# Backend (Maven/Java)
+backend/target/
+*.class
+
+# Frontend (Node/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SDD (per-developer)
+.claude/*.local.md
+.worktrees/

@@ -1,0 +1,9 @@
+de:
+  flapdoodle:
+    mongodb:
+      embedded:
+        version: 6.0.27
+
+app:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
