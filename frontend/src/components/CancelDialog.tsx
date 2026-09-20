@@ -29,14 +29,18 @@ export function CancelDialog({ order, onCancelled, onDismiss, onRejected }: Canc
 
   return (
     <div className="dialog-overlay">
-      <div className="dialog" role="dialog" aria-label="Cancel order">
+      <div className="dialog" role="dialog" aria-label="Cancel order" data-testid="cancel-dialog">
         <p>Cancel this {order.currencyPair} order?</p>
-        {error && <p className="form-error">{error}</p>}
+        {error && (
+          <p className="form-error" data-testid="cancel-dialog-error">
+            {error}
+          </p>
+        )}
         <div className="dialog-actions">
-          <button type="button" onClick={onDismiss} disabled={submitting}>
+          <button type="button" onClick={onDismiss} disabled={submitting} data-testid="cancel-dialog-dismiss">
             Dismiss
           </button>
-          <button type="button" onClick={handleConfirm} disabled={submitting}>
+          <button type="button" onClick={handleConfirm} disabled={submitting} data-testid="cancel-dialog-confirm">
             {submitting ? "Cancelling..." : "Confirm"}
           </button>
         </div>

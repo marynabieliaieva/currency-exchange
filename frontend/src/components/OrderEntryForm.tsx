@@ -56,7 +56,7 @@ export function OrderEntryForm({ onSubmit }: OrderEntryFormProps) {
   }
 
   return (
-    <form className="order-entry-form" onSubmit={handleSubmit}>
+    <form className="order-entry-form" onSubmit={handleSubmit} data-testid="order-entry-form">
       <h2>New Order</h2>
 
       <label>
@@ -65,12 +65,17 @@ export function OrderEntryForm({ onSubmit }: OrderEntryFormProps) {
           value={currencyPair}
           onChange={(e) => setCurrencyPair(e.target.value.toUpperCase())}
           placeholder="EUR/USD"
+          data-testid="order-entry-currency-pair"
         />
       </label>
 
       <label>
         Side
-        <select value={side} onChange={(e) => setSide(e.target.value as OrderSide)}>
+        <select
+          value={side}
+          onChange={(e) => setSide(e.target.value as OrderSide)}
+          data-testid="order-entry-side"
+        >
           <option value="BUY">Buy</option>
           <option value="SELL">Sell</option>
         </select>
@@ -78,7 +83,11 @@ export function OrderEntryForm({ onSubmit }: OrderEntryFormProps) {
 
       <label>
         Order Type
-        <select value={type} onChange={(e) => setType(e.target.value as OrderType)}>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as OrderType)}
+          data-testid="order-entry-type"
+        >
           <option value="TAKE_PROFIT">Take Profit</option>
           <option value="STOP_LOSS">Stop Loss</option>
         </select>
@@ -92,6 +101,7 @@ export function OrderEntryForm({ onSubmit }: OrderEntryFormProps) {
           min="0"
           value={triggerPrice}
           onChange={(e) => setTriggerPrice(e.target.value)}
+          data-testid="order-entry-trigger-price"
         />
       </label>
 
@@ -103,12 +113,17 @@ export function OrderEntryForm({ onSubmit }: OrderEntryFormProps) {
           min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          data-testid="order-entry-amount"
         />
       </label>
 
-      {error && <p className="form-error">{error}</p>}
+      {error && (
+        <p className="form-error" data-testid="order-entry-error">
+          {error}
+        </p>
+      )}
 
-      <button type="submit" disabled={submitting}>
+      <button type="submit" disabled={submitting} data-testid="order-entry-submit">
         {submitting ? "Submitting..." : "Submit Order"}
       </button>
     </form>

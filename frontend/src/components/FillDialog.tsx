@@ -30,7 +30,7 @@ export function FillDialog({ order, onFilled, onDismiss, onRejected }: FillDialo
 
   return (
     <div className="dialog-overlay">
-      <div className="dialog" role="dialog" aria-label="Record fill">
+      <div className="dialog" role="dialog" aria-label="Record fill" data-testid="fill-dialog">
         <p>
           {order.currencyPair} {order.side} — remaining: {order.remainingAmount}
         </p>
@@ -43,14 +43,19 @@ export function FillDialog({ order, onFilled, onDismiss, onRejected }: FillDialo
             value={amount}
             disabled={submitting}
             onChange={(e) => setAmount(e.target.value)}
+            data-testid="fill-dialog-amount"
           />
         </label>
-        {error && <p className="form-error">{error}</p>}
+        {error && (
+          <p className="form-error" data-testid="fill-dialog-error">
+            {error}
+          </p>
+        )}
         <div className="dialog-actions">
-          <button type="button" onClick={onDismiss} disabled={submitting}>
+          <button type="button" onClick={onDismiss} disabled={submitting} data-testid="fill-dialog-dismiss">
             Cancel
           </button>
-          <button type="button" onClick={handleRecord} disabled={submitting}>
+          <button type="button" onClick={handleRecord} disabled={submitting} data-testid="fill-dialog-record">
             {submitting ? "Recording..." : "Record"}
           </button>
         </div>

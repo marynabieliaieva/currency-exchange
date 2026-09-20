@@ -40,7 +40,7 @@ export function AmendDialog({ order, onAmended, onDismiss, onRejected }: AmendDi
 
   return (
     <div className="dialog-overlay">
-      <div className="dialog" role="dialog" aria-label="Amend order">
+      <div className="dialog" role="dialog" aria-label="Amend order" data-testid="amend-dialog">
         <p>
           {order.currencyPair} {order.side} — filled so far: {alreadyFilled}
         </p>
@@ -53,6 +53,7 @@ export function AmendDialog({ order, onAmended, onDismiss, onRejected }: AmendDi
             value={triggerPrice}
             disabled={submitting}
             onChange={(e) => setTriggerPrice(e.target.value)}
+            data-testid="amend-dialog-trigger-price"
           />
         </label>
         <label>
@@ -64,14 +65,19 @@ export function AmendDialog({ order, onAmended, onDismiss, onRejected }: AmendDi
             value={remainingAmount}
             disabled={submitting}
             onChange={(e) => setRemainingAmount(e.target.value)}
+            data-testid="amend-dialog-remaining-amount"
           />
         </label>
-        {error && <p className="form-error">{error}</p>}
+        {error && (
+          <p className="form-error" data-testid="amend-dialog-error">
+            {error}
+          </p>
+        )}
         <div className="dialog-actions">
-          <button type="button" onClick={onDismiss} disabled={submitting}>
+          <button type="button" onClick={onDismiss} disabled={submitting} data-testid="amend-dialog-dismiss">
             Cancel
           </button>
-          <button type="button" onClick={handleAmend} disabled={submitting}>
+          <button type="button" onClick={handleAmend} disabled={submitting} data-testid="amend-dialog-submit">
             {submitting ? "Amending..." : "Amend"}
           </button>
         </div>

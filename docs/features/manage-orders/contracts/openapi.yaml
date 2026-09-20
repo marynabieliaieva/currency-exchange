@@ -183,7 +183,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Order" }
         "400":
-          description: amount is not a positive number (bean validation, same pattern as OrderCreate)
+          description: >-
+            amount is not a positive number after scale-8 normalization. Raised by OrderService,
+            not DTO bean validation (unlike OrderCreate) — this is deliberate: it must re-check the
+            *normalized* amount, since a sub-scale positive value (e.g. 0.000000001) is legal at
+            the bean-validation layer but rounds to zero, so only a post-normalization check catches
+            it. The service-level check also lets this response carry the domain `code` below;
+            bean validation never sets `code` (see GlobalExceptionHandler.handleValidation).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

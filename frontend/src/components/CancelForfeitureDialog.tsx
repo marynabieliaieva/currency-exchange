@@ -41,22 +41,41 @@ export function CancelForfeitureDialog({ order, onCancelled, onDismiss, onReject
 
   return (
     <div className="dialog-overlay">
-      <div className="dialog" role="dialog" aria-label="Cancel order with forfeiture">
+      <div
+        className="dialog"
+        role="dialog"
+        aria-label="Cancel order with forfeiture"
+        data-testid="cancel-forfeiture-dialog"
+      >
         <p>
           Already filled: {alreadyFilled}. Cancelling this {order.currencyPair} order permanently
           forfeits the remaining {remaining}.
         </p>
         {confirmedForfeiture && (
-          <p className="form-error">
+          <p className="form-error" data-testid="cancel-forfeiture-dialog-warning">
             This cannot be undone — the remaining {remaining} will be permanently forfeited.
           </p>
         )}
-        {error && <p className="form-error">{error}</p>}
+        {error && (
+          <p className="form-error" data-testid="cancel-forfeiture-dialog-error">
+            {error}
+          </p>
+        )}
         <div className="dialog-actions">
-          <button type="button" onClick={onDismiss} disabled={submitting}>
+          <button
+            type="button"
+            onClick={onDismiss}
+            disabled={submitting}
+            data-testid="cancel-forfeiture-dialog-dismiss"
+          >
             Dismiss
           </button>
-          <button type="button" onClick={handleConfirm} disabled={submitting}>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={submitting}
+            data-testid="cancel-forfeiture-dialog-confirm"
+          >
             {submitting
               ? "Cancelling..."
               : confirmedForfeiture

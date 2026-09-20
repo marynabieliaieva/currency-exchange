@@ -18,11 +18,11 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (orders.length === 0) {
-    return <p>No orders yet.</p>;
+    return <p data-testid="manage-orders-empty">No orders yet.</p>;
   }
 
   return (
-    <table className="order-list">
+    <table className="order-list" data-testid="manage-orders-list">
       <thead>
         <tr>
           <th></th>
@@ -43,13 +43,14 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
           const isExpanded = expandedId === order.id;
           return (
             <Fragment key={order.id}>
-              <tr>
+              <tr data-testid={`order-row-${order.id}`}>
                 <td>
                   {hasFills && (
                     <button
                       type="button"
                       aria-label={isExpanded ? "Collapse fill trail" : "Expand fill trail"}
                       onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                      data-testid={`order-expand-${order.id}`}
                     >
                       {isExpanded ? "▾" : "▸"}
                     </button>
@@ -63,19 +64,34 @@ export function ManageOrdersList({ orders, onCancel, onFill, onAmend }: ManageOr
                 <td>{order.remainingAmount}</td>
                 <td>{order.status}</td>
                 <td>
-                  <button type="button" disabled={!isPending} onClick={() => onCancel(order)}>
+                  <button
+                    type="button"
+                    disabled={!isPending}
+                    onClick={() => onCancel(order)}
+                    data-testid={`order-cancel-${order.id}`}
+                  >
                     Cancel
                   </button>
-                  <button type="button" disabled={!isPending} onClick={() => onFill(order)}>
+                  <button
+                    type="button"
+                    disabled={!isPending}
+                    onClick={() => onFill(order)}
+                    data-testid={`order-fill-${order.id}`}
+                  >
                     Fill
                   </button>
-                  <button type="button" disabled={!isPending} onClick={() => onAmend(order)}>
+                  <button
+                    type="button"
+                    disabled={!isPending}
+                    onClick={() => onAmend(order)}
+                    data-testid={`order-amend-${order.id}`}
+                  >
                     Amend
                   </button>
                 </td>
               </tr>
               {isExpanded && (
-                <tr>
+                <tr data-testid={`order-fill-trail-row-${order.id}`}>
                   <td></td>
                   <td colSpan={8}>
                     <FillTrail fillEvents={order.fillEvents} />
