@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test Coverage Suggestions</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #8b93a3;
+    --accent: #4f8cff;
+    --accept: #2fa96a;
+    --decline: #d9534f;
+    --pending: #8b93a3;
+    --manual: #b58cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  .tier { margin-bottom: 28px; }
+  .tier-title {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .tier-empty { color: var(--muted); font-size: 13px; font-style: italic; }
+
+  .scenario {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color .15s ease;
+  }
+  .scenario[data-state="accepted"] { border-color: var(--accept); }
+  .scenario[data-state="declined"] { opacity: 0.75; border-color: var(--decline); }
+
+  .scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .scenario-id { font-size: 11px; color: var(--muted); font-family: monospace; }
+  .scenario-title { font-weight: 600; font-size: 14px; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge.manual { color: var(--manual); border-color: var(--manual); }
+
+  .scenario-body { font-size: 13px; color: var(--text); margin-bottom: 10px; }
+  .scenario-body p { margin: 2px 0; }
+  .scenario-body strong { color: var(--muted); font-weight: 600; }
+
+  .scenario-actions { display: flex; gap: 8px; align-items: center; }
+  .scenario-actions button {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn-accept.active { background: var(--accept); border-color: var(--accept); color: #fff; }
+  .btn-decline.active { background: var(--decline); border-color: var(--decline); color: #fff; }
+  .state-label { font-size: 12px; color: var(--pending); margin-left: auto; }
+  .state-label.accepted { color: var(--accept); }
+  .state-label.declined { color: var(--decline); }
+
+  .decline-reason-row {
+    display: none;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .decline-reason-row.visible { display: flex; flex-wrap: wrap; }
+  .decline-reason-row select,
+  .decline-reason-row input {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .decline-reason-row select { min-width: 200px; }
+  .decline-reason-row input { flex: 1; min-width: 160px; }
+  .decline-reason-row.missing select { border-color: var(--decline); }
+
+  .add-test-panel {
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+    margin-bottom: 28px;
+  }
+  .add-test-panel h2 { font-size: 14px; margin: 0 0 12px; color: var(--accent); }
+  .add-test-panel .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .add-test-panel label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .add-test-panel input, .add-test-panel select, .add-test-panel textarea {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .add-test-panel textarea { min-height: 60px; resize: vertical; }
+  .col { flex: 1; min-width: 200px; }
+  .add-test-panel button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .footer-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+  }
+  #completeBtn {
+    background: var(--accept);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #completeBtn:disabled { background: var(--muted); cursor: default; }
+  #statusMsg { font-size: 13px; color: var(--muted); }
+  #statusMsg.ok { color: var(--accept); }
+  #statusMsg.err { color: var(--decline); }
+</style>
+</head>
+<body>
+
+<h1>Test Coverage Suggestions</h1>
+<div class="subtitle">Accept or decline each proposed scenario below. Add anything missing at the bottom, then click "Review Completed".</div>
+
+<!-- ============================================================ -->
+<!-- test-strategist MUST fill ONLY the five placeholders below,  -->
+<!-- each with zero or more <div class="scenario"> blocks in the  -->
+<!-- exact structure shown in the comment beneath this block.     -->
+<!-- Do not reorder, rename, or remove the five tier sections,    -->
+<!-- and do not add any other categories.                         -->
+<!-- ============================================================ -->
+
+<div class="tier" data-tier="BE Unit">
+  <div class="tier-title">BE Unit</div>
+  <div class="scenario-list">
+{{BE_UNIT_SCENARIOS}}
+  </div>
+</div>
+
+<div class="tier" data-tier="BE Component">
+  <div class="tier-title">BE Component</div>
+  <div class="scenario-list">
+{{BE_COMPONENT_SCENARIOS}}
+  </div>
+</div>
+
+<div class="tier" data-tier="UI Unit">
+  <div class="tier-title">UI Unit</div>
+  <div class="scenario-list">
+{{UI_UNIT_SCENARIOS}}
+  </div>
+</div>
+
+<div class="tier" data-tier="UI Component">
+  <div class="tier-title">UI Component</div>
+  <div class="scenario-list">
+{{UI_COMPONENT_SCENARIOS}}
+  </div>
+</div>
+
+<div class="tier" data-tier="Integration">
+  <div class="tier-title">Integration</div>
+  <div class="scenario-list">
+{{INTEGRATION_SCENARIOS}}
+  </div>
+</div>
+
+<!--
+Expected structure for each scenario inserted into a placeholder above
+(if a tier has no suggestions, just remove the placeholder text so the
+scenario-list div is empty). The decline-reason row and state label are
+injected automatically by the page script — do not include them yourself:
+
+<div class="scenario" data-id="TS-001" data-tier="BE Unit" data-state="pending" data-manual="false">
+  <div class="scenario-header">
+    <span class="scenario-id">TS-001</span>
+    <span class="scenario-title">Reject order when balance insufficient</span>
+    <span class="badge">Boundary Value Analysis</span>
+  </div>
+  <div class="scenario-body">
+    <p><strong>Given:</strong> ...</p>
+    <p><strong>When:</strong> ...</p>
+    <p><strong>Then:</strong> ...</p>
+  </div>
+  <div class="scenario-actions">
+    <button class="btn-accept">Accept</button>
+    <button class="btn-decline">Decline</button>
+  </div>
+</div>
+-->
+
+<div class="add-test-panel">
+  <h2>Add a test scenario</h2>
+  <div class="row">
+    <div class="col">
+      <label>Tier</label>
+      <select id="newTier">
+        <option value="BE Unit">BE Unit</option>
+        <option value="BE Component">BE Component</option>
+        <option value="UI Unit">UI Unit</option>
+        <option value="UI Component">UI Component</option>
+        <option value="Integration">Integration</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>Technique</label>
+      <input type="text" id="newTechnique" placeholder="e.g. Equivalence Partitioning">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label>Title</label>
+      <input type="text" id="newTitle" placeholder="Short scenario title">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label>Given / When / Then</label>
+      <textarea id="newBody" placeholder="Given ... When ... Then ..."></textarea>
+    </div>
+  </div>
+  <button id="addTestBtn">Add scenario</button>
+</div>
+
+<div class="footer-bar">
+  <button id="completeBtn">Review Completed</button>
+  <span id="statusMsg"></span>
+</div>
+
+<script>
+const SAVE_URL = 'http://127.0.0.1:8765/save';
+
+const DECLINE_REASONS = [
+  { value: '', label: 'Select a reason…' },
+  { value: 'out_of_scope', label: 'Out of scope' },
+  { value: 'duplicate', label: 'Duplicate coverage' },
+  { value: 'not_testable', label: 'Not testable at this tier' },
+  { value: 'low_value', label: 'Low value / low risk' },
+  { value: 'already_covered', label: 'Already covered elsewhere' },
+  { value: 'other', label: 'Other (specify)' }
+];
+
+let scenarioCounter = 0;
+
+function tierListEl(tierName) {
+  const tierEl = document.querySelector(`.tier[data-tier="${tierName}"]`);
+  return tierEl.querySelector('.scenario-list');
+}
+
+function ensureDeclineReasonRow(scenario) {
+  let row = scenario.querySelector('.decline-reason-row');
+  if (row) return row;
+
+  row = document.createElement('div');
+  row.className = 'decline-reason-row';
+
+  const select = document.createElement('select');
+  select.className = 'decline-reason';
+  DECLINE_REASONS.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.value;
+    opt.textContent = r.label;
+    select.appendChild(opt);
+  });
+
+  const otherInput = document.createElement('input');
+  otherInput.type = 'text';
+  otherInput.className = 'decline-reason-other';
+  otherInput.placeholder = 'Specify reason';
+  otherInput.style.display = 'none';
+
+  select.addEventListener('change', () => {
+    otherInput.style.display = select.value === 'other' ? '' : 'none';
+    row.classList.remove('missing');
+  });
+
+  row.appendChild(select);
+  row.appendChild(otherInput);
+  scenario.appendChild(row);
+  return row;
+}
+
+function setScenarioState(scenario, state) {
+  scenario.dataset.state = state;
+  const acceptBtn = scenario.querySelector('.btn-accept');
+  const declineBtn = scenario.querySelector('.btn-decline');
+  const label = scenario.querySelector('.state-label');
+  const reasonRow = ensureDeclineReasonRow(scenario);
+
+  acceptBtn.classList.toggle('active', state === 'accepted');
+  declineBtn.classList.toggle('active', state === 'declined');
+  label.textContent = state === 'accepted' ? 'Accepted' : state === 'declined' ? 'Declined' : 'Pending';
+  label.className = 'state-label ' + state;
+
+  if (state === 'declined') {
+    reasonRow.classList.add('visible');
+    reasonRow.querySelector('.decline-reason').focus();
+  } else {
+    reasonRow.classList.remove('visible');
+    reasonRow.classList.remove('missing');
+    reasonRow.querySelector('.decline-reason').value = '';
+    reasonRow.querySelector('.decline-reason-other').value = '';
+    reasonRow.querySelector('.decline-reason-other').style.display = 'none';
+  }
+}
+
+function wireScenario(scenario) {
+  const acceptBtn = scenario.querySelector('.btn-accept');
+  const declineBtn = scenario.querySelector('.btn-decline');
+  if (!scenario.querySelector('.state-label')) {
+    const label = document.createElement('span');
+    label.className = 'state-label';
+    scenario.querySelector('.scenario-actions').appendChild(label);
+  }
+  ensureDeclineReasonRow(scenario);
+  setScenarioState(scenario, scenario.dataset.state || 'pending');
+  acceptBtn.addEventListener('click', () => setScenarioState(scenario, 'accepted'));
+  declineBtn.addEventListener('click', () => setScenarioState(scenario, 'declined'));
+}
+
+document.querySelectorAll('.scenario').forEach(wireScenario);
+
+document.querySelectorAll('.scenario-list').forEach(list => {
+  if (list.children.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'tier-empty';
+    empty.textContent = 'No suggestions for this tier.';
+    list.appendChild(empty);
+  }
+});
+
+document.getElementById('addTestBtn').addEventListener('click', () => {
+  const tier = document.getElementById('newTier').value;
+  const title = document.getElementById('newTitle').value.trim();
+  const body = document.getElementById('newBody').value.trim();
+  const technique = document.getElementById('newTechnique').value.trim();
+
+  if (!title) { alert('Title is required.'); return; }
+
+  const list = tierListEl(tier);
+  const emptyNote = list.querySelector('.tier-empty');
+  if (emptyNote) emptyNote.remove();
+
+  scenarioCounter += 1;
+  const id = 'MANUAL-' + scenarioCounter;
+  const scenario = document.createElement('div');
+  scenario.className = 'scenario';
+  scenario.dataset.id = id;
+  scenario.dataset.tier = tier;
+  scenario.dataset.state = 'accepted';
+  scenario.dataset.manual = 'true';
+  scenario.innerHTML = `
+    <div class="scenario-header">
+      <span class="scenario-id">${id}</span>
+      <span class="scenario-title">${title}</span>
+      ${technique ? `<span class="badge">${technique}</span>` : ''}
+      <span class="badge manual">manual</span>
+    </div>
+    <div class="scenario-body"><p>${body.replace(/\n/g, '<br>')}</p></div>
+    <div class="scenario-actions">
+      <button class="btn-accept">Accept</button>
+      <button class="btn-decline">Decline</button>
+    </div>
+  `;
+  list.appendChild(scenario);
+  wireScenario(scenario);
+
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newBody').value = '';
+  document.getElementById('newTechnique').value = '';
+});
+
+async function saveDecisions(json) {
+  const res = await fetch(SAVE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(json, null, 2)
+  });
+  if (!res.ok) throw new Error('Server responded with ' + res.status);
+}
+
+document.getElementById('completeBtn').addEventListener('click', async () => {
+  const scenarios = Array.from(document.querySelectorAll('.scenario'));
+  const statusEl = document.getElementById('statusMsg');
+
+  const pending = scenarios.filter(s => s.dataset.state === 'pending');
+  if (pending.length > 0) {
+    statusEl.textContent = `${pending.length} scenario(s) still pending — resolve them first.`;
+    statusEl.className = 'err';
+    return;
+  }
+
+  const missingReason = [];
+  scenarios.forEach(s => {
+    if (s.dataset.state !== 'declined') return;
+    const row = s.querySelector('.decline-reason-row');
+    const select = row.querySelector('.decline-reason');
+    const other = row.querySelector('.decline-reason-other');
+    const reasonValue = select.value;
+    if (!reasonValue || (reasonValue === 'other' && !other.value.trim())) {
+      row.classList.add('missing');
+      missingReason.push(s);
+    }
+  });
+
+  if (missingReason.length > 0) {
+    statusEl.textContent = `Select a decline reason for ${missingReason.length} scenario(s).`;
+    statusEl.className = 'err';
+    missingReason[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const decisions = scenarios.map(s => {
+    const entry = {
+      id: s.dataset.id,
+      tier: s.dataset.tier,
+      title: s.querySelector('.scenario-title').textContent,
+      state: s.dataset.state,
+      manual: s.dataset.manual === 'true'
+    };
+    if (s.dataset.state === 'declined') {
+      const row = s.querySelector('.decline-reason-row');
+      const select = row.querySelector('.decline-reason');
+      const other = row.querySelector('.decline-reason-other');
+      entry.decline_reason = select.value === 'other' ? other.value.trim() : select.value;
+    }
+    return entry;
+  });
+
+  const payload = { completed_at: new Date().toISOString(), decisions };
+
+  try {
+    await saveDecisions(payload);
+    statusEl.textContent = 'Saved.';
+    statusEl.className = 'ok';
+    document.getElementById('completeBtn').disabled = true;
+    document.getElementById('completeBtn').textContent = 'Review Completed ✓';
+  } catch (err) {
+    statusEl.textContent = 'Could not reach local save server: ' + err.message;
+    statusEl.className = 'err';
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test Coverage Suggestions</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #8b93a3;
+    --accent: #4f8cff;
+    --accept: #2fa96a;
+    --decline: #d9534f;
+    --pending: #8b93a3;
+    --manual: #b58cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  .tier { margin-bottom: 28px; }
+  .tier-title {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .tier-empty { color: var(--muted); font-size: 13px; font-style: italic; }
+
+  .scenario {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color .15s ease;
+  }
+  .scenario[data-state="accepted"] { border-color: var(--accept); }
+  .scenario[data-state="declined"] { opacity: 0.75; border-color: var(--decline); }
+
+  .scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .scenario-id { font-size: 11px; color: var(--muted); font-family: monospace; }
+  .scenario-title { font-weight: 600; font-size: 14px; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge.manual { color: var(--manual); border-color: var(--manual); }
+
+  .scenario-body { font-size: 13px; color: var(--text); margin-bottom: 10px; }
+  .scenario-body p { margin: 2px 0; }
+  .scenario-body strong { color: var(--muted); font-weight: 600; }
+
+  .scenario-actions { display: flex; gap: 8px; align-items: center; }
+  .scenario-actions button {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn-accept.active { background: var(--accept); border-color: var(--accept); color: #fff; }
+  .btn-decline.active { background: var(--decline); border-color: var(--decline); color: #fff; }
+  .state-label { font-size: 12px; color: var(--pending); margin-left: auto; }
+  .state-label.accepted { color: var(--accept); }
+  .state-label.declined { color: var(--decline); }
+
+  .decline-reason-row {
+    display: none;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .decline-reason-row.visible { display: flex; flex-wrap: wrap; }
+  .decline-reason-row select,
+  .decline-reason-row input {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .decline-reason-row select { min-width: 200px; }
+  .decline-reason-row input { flex: 1; min-width: 160px; }
+  .decline-reason-row.missing select { border-color: var(--decline); }
+
+  .add-test-panel {
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+    margin-bottom: 28px;
+  }
+  .add-test-panel h2 { font-size: 14px; margin: 0 0 12px; color: var(--accent); }
+  .add-test-panel .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .add-test-panel label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .add-test-panel input, .add-test-panel select, .add-test-panel textarea {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .add-test-panel textarea { min-height: 60px; resize: vertical; }
+  .col { flex: 1; min-width: 200px; }
+  .add-test-panel button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .footer-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+  }
+  #completeBtn {
+    background: var(--accept);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #completeBtn:disabled { background: var(--muted); cursor: default; }
+  #statusMsg { font-size: 13px; color: var(--muted); }
+  #statusMsg.ok { color: var(--accept); }
+  #statusMsg.err { color: var(--decline); }
+</style>
+</head>
+<body>
+
+<h1>Test Coverage Suggestions</h1>
+<div class="subtitle">Accept or decline each proposed scenario below. Add anything missing at the bottom, then click "Review Completed".</div>
+
+<!-- ============================================================ -->
+<!-- test-strategist MUST fill ONLY the five placeholders below,  -->
+<!-- each with zero or more <div class="scenario"> blocks in the  -->
+<!-- exact structure shown in the comment beneath this block.     -->
+<!-- Do not reorder, rename, or remove the five tier sections,    -->
+<!-- and do not add any other categories.                         -->
+<!-- ============================================================ -->
+
+<div class="tier" data-tier="BE Unit">
+  <div class="tier-title">BE Unit</div>
+  <div class="scenario-list">
+    <div class="scenario" data-id="BEU-01" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-01</span>
+        <span class="scenario-title">createOrder with a sub-scale amount yields an unfillable PENDING order</span>
+        <span class="badge">Monetary BVA + regression pin</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> CreateOrderRequest.amount carries @DecimalMin(0.0, exclusive), so 0.000000001 passes bean validation; OrderService.createOrder then normalizes to scale 8 and — unlike fillOrder — never re-checks positivity.</p>
+        <p><strong>When:</strong> createOrder is called with amount = 0.000000001 (OrderRepository mocked to echo its argument).</p>
+        <p><strong>Then:</strong> Pin the CURRENT behaviour: the saved order has amount and remainingAmount both comparing equal to zero and status PENDING — an order that can never be filled and can never reach FILLED. Comment the test as a pinned defect referencing escalation E-01. Do NOT assert the desired behaviour.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEU-02" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-02</span>
+        <span class="scenario-title">amendOrder runs its positivity check pre-normalization: pin the mechanics</span>
+        <span class="badge">Monetary BVA + ordering regression pin</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> amendOrder checks newRemainingAmount is positive on the RAW argument (line 81), then normalizes to scale 8 afterwards (line 85) — the opposite order from fillOrder.</p>
+        <p><strong>When:</strong> amendOrder(id, null, 0.000000001) is called; tryAmend is mocked empty and findById returns a PENDING order.</p>
+        <p><strong>Then:</strong> Pin that the caller gets InvalidAmendException — i.e. 409 order.amend_out_of_range quoting a ceiling the input never approached — whereas the identically shaped fill returns 400 order.invalid_fill_amount. Assert exception type and message shape as they are today. Cross-reference escalation E-02. Pin, do not fix.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEU-03" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-03</span>
+        <span class="scenario-title">Assert InvalidFillAmountException.Reason and no-DB-call, not just the exception type</span>
+        <span class="badge">Decision Table + mutation hardening</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> Three existing tests (fillOrderRejectsZeroOrNegativeAmountBeforeAnyDbCall, fillOrderRejectsSubScaleAmountThatNormalizesToZeroBeforeAnyDbCall, fillOrderThrowsInvalidFillAmountWhenExceedsRemaining) assert only isInstanceOf(InvalidFillAmountException.class), and the one named ...BeforeAnyDbCall never verifies that claim.</p>
+        <p><strong>When:</strong> The same inputs are exercised: 0, -5, 0.000000001 (normalizes to zero), and an amount exceeding remaining.</p>
+        <p><strong>Then:</strong> Strengthen IN PLACE — do not add new test methods. Assert getReason() is NOT_POSITIVE for the first three and EXCEEDS_REMAINING for the fourth, because GlobalExceptionHandler branches on Reason to choose 400 order.invalid_fill_amount versus 409 order.fill_exceeds_remaining; a mutant swapping them currently survives the whole suite. Add verifyNoInteractions(orderMongoOperations) to the two pre-DB cases.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEU-04" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-04</span>
+        <span class="scenario-title">amendOrder throws OrderNotFoundException for an unknown id</span>
+        <span class="badge">Equivalence Partitioning (completeness)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> cancelOrder and fillOrder each have a missing-id test; amendOrder has none, although its rejection path routes through getOrder(id) and raises the same exception.</p>
+        <p><strong>When:</strong> amendOrder is called with an id for which tryAmend returns empty and findById returns empty.</p>
+        <p><strong>Then:</strong> OrderNotFoundException is thrown (404 order-not-found at the HTTP edge), not InvalidAmendException.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEU-05" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-05</span>
+        <span class="scenario-title">Delete filledStatusExistsOnEnum</span>
+        <span class="badge">Cleanup (rules section 1 — no coverage padding)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> OrderServiceTest contains a test asserting OrderStatus.valueOf("FILLED") equals OrderStatus.FILLED.</p>
+        <p><strong>When:</strong> The suite is reviewed for tests that cannot fail without the module failing to compile.</p>
+        <p><strong>Then:</strong> Remove it. It asserts a property of the Java language, not of this codebase; no mutant can kill it. Real FILLED-transition coverage lives at INT-02.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEU-06" data-tier="BE Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEU-06</span>
+        <span class="scenario-title">Merge the two overlapping createOrder tests</span>
+        <span class="badge">Cleanup (duplicate assertion sets)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> createOrderSavesPendingOrder asserts status, currency pair and type; createOrderSetsRemainingAmountToNormalizedScaleEightAndNoFillEvents asserts all of that plus scale 8, remaining amount and empty fill events — the first is a strict subset.</p>
+        <p><strong>When:</strong> Both tests run today against identical setup.</p>
+        <p><strong>Then:</strong> Keep the second, fold the currency-pair and type assertions into it, delete the first.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tier" data-tier="BE Component">
+  <div class="tier-title">BE Component</div>
+  <div class="scenario-list">
+    <div class="scenario" data-id="BEC-01" data-tier="BE Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEC-01</span>
+        <span class="scenario-title">FillRequest bean-validation versus service-validation decision table</span>
+        <span class="badge">Decision Table + Payload Boundary Analysis</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> FillRequest deliberately carries only @NotNull and never @DecimalMin (settled decision — see MEMORY.md; do NOT re-flag as contract drift): bean validation would pre-empt OrderService, and handleValidation never sets ApiError.code, so the documented order.invalid_fill_amount would disappear.</p>
+        <p><strong>When:</strong> POST /api/orders/{id}/fills is called at @WebMvcTest level with three bodies: {} , {"amount": null} , and {"amount": 0}.</p>
+        <p><strong>Then:</strong> Rows one and two are rejected by bean validation with 400 and NO code field — assert jsonPath("$.code").doesNotExist(). Row three reaches the service and returns 400 with code order.invalid_fill_amount. The presence-or-absence of code is the contract difference and must be asserted explicitly.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEC-02" data-tier="BE Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEC-02</span>
+        <span class="scenario-title">Malformed and unparseable request bodies — characterize the response shape</span>
+        <span class="badge">Error Guessing + Negative Testing</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> GlobalExceptionHandler declares no @ExceptionHandler for HttpMessageNotReadableException, so a body that cannot be deserialized bypasses the uniform ApiError shape that openapi.yaml promises for every 400 — and orderApi.handleResponse reads body?.messages, so the frontend silently degrades to its generic fallback message.</p>
+        <p><strong>When:</strong> POST /api/orders/{id}/fills and PATCH /api/orders/{id} are called with {"amount": "abc"} and with truncated JSON.</p>
+        <p><strong>Then:</strong> Characterize what actually comes back (status and body shape). If it breaches the documented ApiError contract, record it as a finding for the escalation section — do NOT add the missing handler; that is a production change requiring explicit approval (rules section 7).</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="BEC-03" data-tier="BE Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">BEC-03</span>
+        <span class="scenario-title">AmendRequest legal-partition completeness — the price-only PATCH</span>
+        <span class="badge">Decision Table + Equivalence Partitioning</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> AmendRequest has four partitions: both fields present, remaining-only, price-only, neither. Only remaining-only (200) and neither (400 via @AssertTrue) are tested today.</p>
+        <p><strong>When:</strong> PATCH /api/orders/{id} is called with {triggerPrice, remainingAmount} present together, and separately with triggerPrice only.</p>
+        <p><strong>Then:</strong> Both return 200 and delegate the exact field combination to OrderService (verify the captured arguments, including the null). The price-only row matters twice: it is a documented 200 path in openapi.yaml, and it is the one partition AmendDialog can never produce (see UIC-03), so no other test in any tier will ever reach it.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tier" data-tier="UI Unit">
+  <div class="tier-title">UI Unit</div>
+  <div class="scenario-list">
+    <div class="scenario" data-id="UIU-01" data-tier="UI Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIU-01</span>
+        <span class="scenario-title">orderApi.handleResponse error-branch decision table</span>
+        <span class="badge">Decision Table + Equivalence Partitioning</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> orderApi.ts has never executed under test — every frontend test mocks the whole module — yet handleResponse is the single place the backend's ApiError shape is translated into something the UI can show.</p>
+        <p><strong>When:</strong> global.fetch is stubbed and handleResponse is driven through each response partition: ok with a JSON body; not-ok with a full ApiError body; not-ok whose .json() rejects (non-JSON body); not-ok with JSON that has no messages array.</p>
+        <p><strong>Then:</strong> Row one resolves to the parsed body. Row two throws ApiRequestError whose message is messages.join(", ") and whose status and code are carried through. Rows three and four throw with the "Request failed with status N" fallback and an undefined code.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIU-02" data-tier="UI Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIU-02</span>
+        <span class="scenario-title">orderApi request-shape contract for all five exported functions</span>
+        <span class="badge">Equivalence Partitioning + Contract Testing</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> orderApi is the only module that knows VITE_API_BASE_URL and the API's URL and JSON shapes; types/order.ts is hand-synced to the Java DTOs with no codegen, so a drift here is invisible until runtime.</p>
+        <p><strong>When:</strong> createOrder, listOrders, cancelOrder, fillOrder and amendOrder are each called once with fetch stubbed.</p>
+        <p><strong>Then:</strong> Each issues the contracted method, path and body against the base URL: POST /api/orders, GET /api/orders, DELETE /api/orders/{id}, POST /api/orders/{id}/fills with {amount}, PATCH /api/orders/{id} with the amend body — matching contracts/openapi.yaml. Assert the Content-Type header is set on the three writing calls.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIU-03" data-tier="UI Unit" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIU-03</span>
+        <span class="scenario-title">OrderEntryForm client-side validation partitions and post-submit reset</span>
+        <span class="badge">Equivalence Partitioning + BVA</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> OrderEntryForm.validate mirrors the backend constraints client-side, but OrderEntryPage.test.tsx only walks the happy path, so not one rejection branch has ever rendered.</p>
+        <p><strong>When:</strong> The form is rendered in isolation with a stub onSubmit and submitted with: a malformed pair ("EURUSD", "eur/usd", "EUR/USDX"); a valid pair; trigger price empty, 0, negative, and a positive boundary; amount empty, 0, negative, and positive.</p>
+        <p><strong>Then:</strong> Each invalid partition blocks submission (onSubmit never called) and renders its specific message; the valid combination calls onSubmit exactly once with numeric triggerPrice and amount; after a resolved submit the price and amount fields are cleared while currency pair, side and type are retained.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tier" data-tier="UI Component">
+  <div class="tier-title">UI Component</div>
+  <div class="scenario-list">
+    <div class="scenario" data-id="UIC-01" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-01</span>
+        <span class="scenario-title">FillDialog sends a request for empty and negative input — characterize</span>
+        <span class="badge">Equivalence Partitioning + Error Guessing</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> Unlike OrderEntryForm, FillDialog has no client-side validation, and Number("") is 0 in JavaScript.</p>
+        <p><strong>When:</strong> Record is clicked with the amount field left empty, and again with a typed negative value.</p>
+        <p><strong>Then:</strong> Characterize the real behaviour: fillOrder IS called, with 0 and with the negative value respectively; the server's rejection message is what the user ends up seeing in the dialog error element. Pin this rather than asserting a client-side guard that does not exist.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-02" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-02</span>
+        <span class="scenario-title">CancelForfeitureDialog two-step confirmation state machine, in isolation</span>
+        <span class="badge">State Transition Testing</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> AC-02 is the guard that stops a trader forfeiting money on a single click, and today it is verified exactly once, inside a page-level happy path.</p>
+        <p><strong>When:</strong> The dialog is mounted directly for an order with fill events, and the confirm button is clicked once, then a second time; separately, a half-armed dialog is dismissed and reopened from the row.</p>
+        <p><strong>Then:</strong> First click: cancelOrder is NOT called, the irreversibility warning naming the forfeited remainder becomes visible, and the button relabels. Second click: cancelOrder is called exactly once. After dismiss-and-reopen the machine is re-armed — the first click of the new dialog still does not cancel (verify the page unmounts the dialog on dismiss rather than assuming it).</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-03" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-03</span>
+        <span class="scenario-title">AmendDialog always sends both fields — pin both consequences</span>
+        <span class="badge">Decision Table + Equivalence Partitioning</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> AmendDialog posts {triggerPrice, remainingAmount} unconditionally as Number(...), with no way to omit either.</p>
+        <p><strong>When:</strong> The dialog is submitted unchanged, and again with the trigger price field cleared.</p>
+        <p><strong>Then:</strong> Pin that the legal price-only PATCH documented in openapi.yaml is unreachable from the UI (the amend body always carries both keys), and that clearing the price sends Number("") === 0, which @DecimalMin rejects with a 400 the trader did not intend. Characterize only; cross-reference escalation E-03.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-04" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-04</span>
+        <span class="scenario-title">IEEE-754 drift in the already-filled totals</span>
+        <span class="badge">Monetary BVA</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> sumFilled reduces with JavaScript + over IEEE-754 doubles while the backend keeps scale-8 BigDecimal (settled — see MEMORY.md: treat as expected frontend behaviour to characterize, not a backend bug).</p>
+        <p><strong>When:</strong> An order carrying fill events of 0.1 and 0.2 is rendered in AmendDialog and in CancelForfeitureDialog.</p>
+        <p><strong>Then:</strong> Pin what the trader actually reads: the drifted total in AmendDialog's "filled so far" line and — more consequentially — in CancelForfeitureDialog's "Already filled" line, which names the amount about to be permanently forfeited.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-05" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-05</span>
+        <span class="scenario-title">ManageOrdersPage loading and load-failure states</span>
+        <span class="badge">State Transition Testing</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> Every existing page test resolves listOrders immediately, so two of the page's three top-level states never render.</p>
+        <p><strong>When:</strong> listOrders is left pending, and separately is rejected with an ApiRequestError.</p>
+        <p><strong>Then:</strong> While pending the page shows its loading text and no list; on rejection it shows the error banner, renders no list at all, and shows no stale confirmation banner.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-06" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-06</span>
+        <span class="scenario-title">ManageOrdersList empty state</span>
+        <span class="badge">Equivalence Partitioning (empty collection)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> ManageOrdersList returns its no-orders message for an empty array; no test has ever rendered that branch.</p>
+        <p><strong>When:</strong> The list is rendered with orders = [].</p>
+        <p><strong>Then:</strong> The empty-state message renders and no table, row or action button is present.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-07" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-07</span>
+        <span class="scenario-title">Fill-trail expand and collapse transitions, including the single-expanded invariant</span>
+        <span class="badge">State Transition Testing + Props Variation</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> AC-08 is covered in one direction only (expand shows the trail); expandedId holds a single id, so expanding is mutually exclusive across rows.</p>
+        <p><strong>When:</strong> A list with two fill-bearing orders and one fill-less order is rendered; rows are expanded and collapsed in sequence.</p>
+        <p><strong>Then:</strong> Collapsing the same row hides the trail; the expander control is absent entirely for the fill-less order; expanding a second row collapses the first. Fill events still render oldest-first with amount and timestamp.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-08" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-08</span>
+        <span class="scenario-title">Dismiss and rejection branches across all four dialogs, parametrized</span>
+        <span class="badge">Equivalence Partitioning (parametrized, not duplicated)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> Each of CancelDialog, CancelForfeitureDialog, FillDialog and AmendDialog has an onDismiss path and an onRejected-plus-inline-error path; only the fill dialog's rejection is exercised, once.</p>
+        <p><strong>When:</strong> ONE parametrized test drives all four dialogs: dismiss without acting, then act with the api call rejected.</p>
+        <p><strong>Then:</strong> Dismiss closes the dialog and calls no api function. A rejection renders that dialog's own error element with the server message, leaves the dialog open, and triggers the page's list re-fetch (onRejected). Do not write four near-identical tests.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="UIC-09" data-tier="UI Component" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">UIC-09</span>
+        <span class="scenario-title">Dialog accessibility audit — assert what exists, escalate what does not</span>
+        <span class="badge">Accessibility / keyboard-navigation audit (rules section 2.3)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> The four dialogs carry role="dialog" and a distinct aria-label each, and disable their controls while submitting; they do NOT carry aria-modal, a focus trap, or Escape-to-dismiss.</p>
+        <p><strong>When:</strong> Each dialog is mounted and queried by accessible role and label, and its controls are exercised during an in-flight request.</p>
+        <p><strong>Then:</strong> Assert the accessible name of each dialog, that every input is reachable through its own label text, and that both buttons are disabled while submitting. Record the missing aria-modal / focus trap / Escape handler as escalation E-04 — do NOT add markup or attributes to production components (rules section 7). Keep role/label selectors; do not migrate to data-testid (settled — see MEMORY.md).</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tier" data-tier="Integration">
+  <div class="tier-title">Integration</div>
+  <div class="scenario-list">
+    <div class="scenario" data-id="INT-01" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-01</span>
+        <span class="scenario-title">Per-test collection isolation in the shared harness</span>
+        <span class="badge">Test-isolation enabler (blocks INT-07)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> IntegrationTestSupport is a bare @SpringBootTest over one embedded Flapdoodle MongoDB, and NOT ONE integration test class drops or clears the orders collection — every existing test only passes because it queries by its own freshly-seeded id.</p>
+        <p><strong>When:</strong> An @AfterEach is added to IntegrationTestSupport that injects MongoTemplate and drops the orders collection.</p>
+        <p><strong>Then:</strong> All existing integration tests still pass. If any starts failing it was silently depending on another class's leftovers — that is precisely the latent flakiness this removes. Test-directory change only, allowed under rules section 7. This must land before INT-07.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-02" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-02</span>
+        <span class="scenario-title">Cumulative partial fills reaching exactly zero mark the order FILLED</span>
+        <span class="badge">Monetary BVA + State Transition</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> A PENDING order with amount = remainingAmount = 1000.00000000. The only existing FILLED test fills the whole remaining amount in one shot, so repeated scale-8 subtraction — what data-model.md decision 3 claims is safe and what spec section 8 raises as the open "phantom pending" question — is unexercised.</p>
+        <p><strong>When:</strong> Three fills are recorded through OrderService.fillOrder: 333.33333333, then 333.33333333, then 333.33333334.</p>
+        <p><strong>Then:</strong> After each of the first two the status is still PENDING. After the third, remainingAmount compares equal to zero AND status is FILLED AND fillEvents holds exactly three entries in oldest-first insertion order with those amounts.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-03" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-03</span>
+        <span class="scenario-title">Fill boundary at remaining plus or minus one smallest unit</span>
+        <span class="badge">BVA + Monetary BVA</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> An order with remainingAmount = 300.00000000, parametrized alongside the existing tests in OrderMongoOperationsIntegrationTest.</p>
+        <p><strong>When:</strong> tryFill is called with 299.99999999 (max minus one unit) and with 300.00000001 (max plus one unit). The exact-max row is already covered — do not duplicate it.</p>
+        <p><strong>Then:</strong> 299.99999999 is accepted, leaving remainingAmount = 0.00000001 with status still PENDING (the near-zero-but-not-zero case). 300.00000001 is rejected as Optional.empty() and the re-read document is unchanged — same remainingAmount, still no fill event appended.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-04" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-04</span>
+        <span class="scenario-title">A rejected amend must not partially apply the new trigger price</span>
+        <span class="badge">State Transition Testing (atomicity, ADR-0001)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> An order with amount = 1000, remainingAmount = 600, one FillEvent of 400 (so the amend ceiling is 600), stored triggerPrice = 1.08500000. The existing tryAmendRejectsRemainingAboveAvailable passes null for the price and asserts only isEmpty(), so a partial $set could never be detected.</p>
+        <p><strong>When:</strong> tryAmend(id, newPrice = 1.20000000, newRemaining = 700.00000000) is called — a legal price paired with an out-of-range remaining.</p>
+        <p><strong>Then:</strong> The result is Optional.empty() AND the re-read document still holds triggerPrice 1.08500000 AND remainingAmount 600. This is the atomicity half of ADR-0001 and nothing tests it today.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-05" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-05</span>
+        <span class="scenario-title">Complete the concurrency pairwise matrix — amend must appear in a race</span>
+        <span class="badge">Pairwise + State Transition</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> OrderConcurrencyIT covers fill-versus-fill, fill-versus-cancel (partial) and fill-versus-cancel (full). Amend never appears in any race, even though it is one of the three actions ADR-0001 serializes and AC-13 names.</p>
+        <p><strong>When:</strong> Using the same ExecutorService and CompletableFuture shape, two further races are run on a seeded order (amount = remainingAmount = 100, no fills): amend-versus-fill (amendOrder(id, null, 40) against fillOrder(id, 60)), and amend-versus-cancel (amendOrder(id, 1.20, 50) against cancelOrder(id)).</p>
+        <p><strong>Then:</strong> amend-versus-fill: whichever order they land, the final document satisfies remainingAmount at or above zero and at most (amount minus the sum of fills), and a losing fill threw InvalidFillAmountException with Reason.EXCEEDS_REMAINING rather than being silently dropped. amend-versus-cancel: the final status is CANCELLED, and if the cancel won, the stored triggerPrice is still the original — an amend must never mutate an order after a cancel takes effect; the losing action threw OrderNotOpenException. Structure these as a parametrized pair, not a copy-paste of the three existing race tests.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-06" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-06</span>
+        <span class="scenario-title">Full-stack HTTP contract walk against the real wire format</span>
+        <span class="badge">Contract Testing + Equivalence Partitioning</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> Every controller test mocks OrderService and every repository test bypasses HTTP, so no test in the suite exercises the real wire contract end to end. A new class with @SpringBootTest(webEnvironment = RANDOM_PORT) + TestRestTemplate + real embedded Mongo and NO mocked beans at all.</p>
+        <p><strong>When:</strong> One order is walked through: POST /api/orders (valid) ; GET /api/orders ; POST /{id}/fills {amount: 400} ; POST /{id}/fills {amount: 9999} ; PATCH /{id} {remainingAmount: 9999} ; DELETE /{id} ; POST /{id}/fills {amount: 1} ; DELETE /{unknown-but-valid-ObjectId}.</p>
+        <p><strong>Then:</strong> In order: 201 with remainingAmount equal to amount, status PENDING, fillEvents empty; 200 containing the order; 201 with remainingAmount reduced and one fill event; 409 with code order.fill_exceeds_remaining; 409 with code order.amend_out_of_range; 200 with status CANCELLED; 409 with code order.not_pending; 404. Assert HTTP status AND the ApiError.code field against contracts/openapi.yaml. Re-verify the seam, not the logic behind it (rules section 2.6) — do not re-test boundary values here; INT-02 and INT-03 own those.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-07" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-07</span>
+        <span class="scenario-title">Mixed-status listing, including a raw legacy document, against a real database</span>
+        <span class="badge">Equivalence Partitioning (depends on INT-01)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> AC-14 (list every status) and AC-11 (legacy documents) are covered only at the frontend and in isolation. A saved Order instance always carries a default empty fillEvents list, so only a hand-built Document reproduces the field being absent — copy the insertLegacyOrder() pattern from OrderServiceLegacyDocumentIT.</p>
+        <p><strong>When:</strong> Four real documents are seeded: PENDING, CANCELLED, FILLED, and one raw legacy document with neither remainingAmount nor fillEvents. listOrders() is called.</p>
+        <p><strong>Then:</strong> All four are returned, in createdAt-descending order, and the legacy row's remainingAmount equals its own amount. Requires INT-01 — without collection isolation this test reads other classes' leftovers.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-08" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-08</span>
+        <span class="scenario-title">Legacy-document equivalence partitions for cancel, fill and amend</span>
+        <span class="badge">Equivalence Partitioning (legacy document x action)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> OrderServiceLegacyDocumentIT covers only getOrder and a price-only amend, leaving three of the four legacy-document action partitions untested against AC-11.</p>
+        <p><strong>When:</strong> Against a raw legacy document (no remainingAmount, no fillEvents field at all): cancelOrder is called; fillOrder is called; and amendOrder is called WITH a newRemaining value.</p>
+        <p><strong>Then:</strong> cancelOrder succeeds with status CANCELLED and a returned remainingAmount falling back to amount. fillOrder succeeds through the service path, reducing from the fallback base and appending one fill event. amendOrder with a newRemaining exercises the $ifNull("$fillEvents", []) branch of the amend-ceiling $reduce when the field is absent entirely: an amend up to amount is accepted and one above it is rejected.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+    <div class="scenario" data-id="INT-09" data-tier="Integration" data-state="pending" data-manual="false">
+      <div class="scenario-header">
+        <span class="scenario-id">INT-09</span>
+        <span class="scenario-title">Retarget or drop the repository round-trip test</span>
+        <span class="badge">Cleanup (rules section 2.1 excludes framework testing)</span>
+      </div>
+      <div class="scenario-body">
+        <p><strong>Given:</strong> OrderRepositoryIntegrationTest's single test saves an Order and reads it back, asserting currency pair and amount — it proves Spring Data works, which rules section 2.1 explicitly excludes.</p>
+        <p><strong>When:</strong> The test is retargeted onto the load-bearing storage fact instead: amounts persist as plain BSON strings, which is exactly why every operand in OrderMongoOperations is wrapped in $toDecimal.</p>
+        <p><strong>Then:</strong> Read the raw Document through MongoTemplate and assert amount is stored as a String at scale 8. If that cannot be asserted cleanly, delete the test outright and say so in the report.</p>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn-accept">Accept</button>
+        <button class="btn-decline">Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+Expected structure for each scenario inserted into a placeholder above
+(if a tier has no suggestions, just remove the placeholder text so the
+scenario-list div is empty). The decline-reason row and state label are
+injected automatically by the page script — do not include them yourself:
+
+<div class="scenario" data-id="TS-001" data-tier="BE Unit" data-state="pending" data-manual="false">
+  <div class="scenario-header">
+    <span class="scenario-id">TS-001</span>
+    <span class="scenario-title">Reject order when balance insufficient</span>
+    <span class="badge">Boundary Value Analysis</span>
+  </div>
+  <div class="scenario-body">
+    <p><strong>Given:</strong> ...</p>
+    <p><strong>When:</strong> ...</p>
+    <p><strong>Then:</strong> ...</p>
+  </div>
+  <div class="scenario-actions">
+    <button class="btn-accept">Accept</button>
+    <button class="btn-decline">Decline</button>
+  </div>
+</div>
+-->
+
+<div class="add-test-panel">
+  <h2>Add a test scenario</h2>
+  <div class="row">
+    <div class="col">
+      <label>Tier</label>
+      <select id="newTier">
+        <option value="BE Unit">BE Unit</option>
+        <option value="BE Component">BE Component</option>
+        <option value="UI Unit">UI Unit</option>
+        <option value="UI Component">UI Component</option>
+        <option value="Integration">Integration</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>Technique</label>
+      <input type="text" id="newTechnique" placeholder="e.g. Equivalence Partitioning">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label>Title</label>
+      <input type="text" id="newTitle" placeholder="Short scenario title">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label>Given / When / Then</label>
+      <textarea id="newBody" placeholder="Given ... When ... Then ..."></textarea>
+    </div>
+  </div>
+  <button id="addTestBtn">Add scenario</button>
+</div>
+
+<div class="footer-bar">
+  <button id="completeBtn">Review Completed</button>
+  <span id="statusMsg"></span>
+</div>
+
+<script>
+const SAVE_URL = 'http://127.0.0.1:8765/save';
+
+const DECLINE_REASONS = [
+  { value: '', label: 'Select a reason…' },
+  { value: 'out_of_scope', label: 'Out of scope' },
+  { value: 'duplicate', label: 'Duplicate coverage' },
+  { value: 'not_testable', label: 'Not testable at this tier' },
+  { value: 'low_value', label: 'Low value / low risk' },
+  { value: 'already_covered', label: 'Already covered elsewhere' },
+  { value: 'other', label: 'Other (specify)' }
+];
+
+let scenarioCounter = 0;
+
+function tierListEl(tierName) {
+  const tierEl = document.querySelector(`.tier[data-tier="${tierName}"]`);
+  return tierEl.querySelector('.scenario-list');
+}
+
+function ensureDeclineReasonRow(scenario) {
+  let row = scenario.querySelector('.decline-reason-row');
+  if (row) return row;
+
+  row = document.createElement('div');
+  row.className = 'decline-reason-row';
+
+  const select = document.createElement('select');
+  select.className = 'decline-reason';
+  DECLINE_REASONS.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.value;
+    opt.textContent = r.label;
+    select.appendChild(opt);
+  });
+
+  const otherInput = document.createElement('input');
+  otherInput.type = 'text';
+  otherInput.className = 'decline-reason-other';
+  otherInput.placeholder = 'Specify reason';
+  otherInput.style.display = 'none';
+
+  select.addEventListener('change', () => {
+    otherInput.style.display = select.value === 'other' ? '' : 'none';
+    row.classList.remove('missing');
+  });
+
+  row.appendChild(select);
+  row.appendChild(otherInput);
+  scenario.appendChild(row);
+  return row;
+}
+
+function setScenarioState(scenario, state) {
+  scenario.dataset.state = state;
+  const acceptBtn = scenario.querySelector('.btn-accept');
+  const declineBtn = scenario.querySelector('.btn-decline');
+  const label = scenario.querySelector('.state-label');
+  const reasonRow = ensureDeclineReasonRow(scenario);
+
+  acceptBtn.classList.toggle('active', state === 'accepted');
+  declineBtn.classList.toggle('active', state === 'declined');
+  label.textContent = state === 'accepted' ? 'Accepted' : state === 'declined' ? 'Declined' : 'Pending';
+  label.className = 'state-label ' + state;
+
+  if (state === 'declined') {
+    reasonRow.classList.add('visible');
+    reasonRow.querySelector('.decline-reason').focus();
+  } else {
+    reasonRow.classList.remove('visible');
+    reasonRow.classList.remove('missing');
+    reasonRow.querySelector('.decline-reason').value = '';
+    reasonRow.querySelector('.decline-reason-other').value = '';
+    reasonRow.querySelector('.decline-reason-other').style.display = 'none';
+  }
+}
+
+function wireScenario(scenario) {
+  const acceptBtn = scenario.querySelector('.btn-accept');
+  const declineBtn = scenario.querySelector('.btn-decline');
+  if (!scenario.querySelector('.state-label')) {
+    const label = document.createElement('span');
+    label.className = 'state-label';
+    scenario.querySelector('.scenario-actions').appendChild(label);
+  }
+  ensureDeclineReasonRow(scenario);
+  setScenarioState(scenario, scenario.dataset.state || 'pending');
+  acceptBtn.addEventListener('click', () => setScenarioState(scenario, 'accepted'));
+  declineBtn.addEventListener('click', () => setScenarioState(scenario, 'declined'));
+}
+
+document.querySelectorAll('.scenario').forEach(wireScenario);
+
+document.querySelectorAll('.scenario-list').forEach(list => {
+  if (list.children.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'tier-empty';
+    empty.textContent = 'No suggestions for this tier.';
+    list.appendChild(empty);
+  }
+});
+
+document.getElementById('addTestBtn').addEventListener('click', () => {
+  const tier = document.getElementById('newTier').value;
+  const title = document.getElementById('newTitle').value.trim();
+  const body = document.getElementById('newBody').value.trim();
+  const technique = document.getElementById('newTechnique').value.trim();
+
+  if (!title) { alert('Title is required.'); return; }
+
+  const list = tierListEl(tier);
+  const emptyNote = list.querySelector('.tier-empty');
+  if (emptyNote) emptyNote.remove();
+
+  scenarioCounter += 1;
+  const id = 'MANUAL-' + scenarioCounter;
+  const scenario = document.createElement('div');
+  scenario.className = 'scenario';
+  scenario.dataset.id = id;
+  scenario.dataset.tier = tier;
+  scenario.dataset.state = 'accepted';
+  scenario.dataset.manual = 'true';
+  scenario.innerHTML = `
+    <div class="scenario-header">
+      <span class="scenario-id">${id}</span>
+      <span class="scenario-title">${title}</span>
+      ${technique ? `<span class="badge">${technique}</span>` : ''}
+      <span class="badge manual">manual</span>
+    </div>
+    <div class="scenario-body"><p>${body.replace(/\n/g, '<br>')}</p></div>
+    <div class="scenario-actions">
+      <button class="btn-accept">Accept</button>
+      <button class="btn-decline">Decline</button>
+    </div>
+  `;
+  list.appendChild(scenario);
+  wireScenario(scenario);
+
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newBody').value = '';
+  document.getElementById('newTechnique').value = '';
+});
+
+async function saveDecisions(json) {
+  const res = await fetch(SAVE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(json, null, 2)
+  });
+  if (!res.ok) throw new Error('Server responded with ' + res.status);
+}
+
+document.getElementById('completeBtn').addEventListener('click', async () => {
+  const scenarios = Array.from(document.querySelectorAll('.scenario'));
+  const statusEl = document.getElementById('statusMsg');
+
+  const pending = scenarios.filter(s => s.dataset.state === 'pending');
+  if (pending.length > 0) {
+    statusEl.textContent = `${pending.length} scenario(s) still pending — resolve them first.`;
+    statusEl.className = 'err';
+    return;
+  }
+
+  const missingReason = [];
+  scenarios.forEach(s => {
+    if (s.dataset.state !== 'declined') return;
+    const row = s.querySelector('.decline-reason-row');
+    const select = row.querySelector('.decline-reason');
+    const other = row.querySelector('.decline-reason-other');
+    const reasonValue = select.value;
+    if (!reasonValue || (reasonValue === 'other' && !other.value.trim())) {
+      row.classList.add('missing');
+      missingReason.push(s);
+    }
+  });
+
+  if (missingReason.length > 0) {
+    statusEl.textContent = `Select a decline reason for ${missingReason.length} scenario(s).`;
+    statusEl.className = 'err';
+    missingReason[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const decisions = scenarios.map(s => {
+    const entry = {
+      id: s.dataset.id,
+      tier: s.dataset.tier,
+      title: s.querySelector('.scenario-title').textContent,
+      state: s.dataset.state,
+      manual: s.dataset.manual === 'true'
+    };
+    if (s.dataset.state === 'declined') {
+      const row = s.querySelector('.decline-reason-row');
+      const select = row.querySelector('.decline-reason');
+      const other = row.querySelector('.decline-reason-other');
+      entry.decline_reason = select.value === 'other' ? other.value.trim() : select.value;
+    }
+    return entry;
+  });
+
+  const payload = { completed_at: new Date().toISOString(), decisions };
+
+  try {
+    await saveDecisions(payload);
+    statusEl.textContent = 'Saved.';
+    statusEl.className = 'ok';
+    document.getElementById('completeBtn').disabled = true;
+    document.getElementById('completeBtn').textContent = 'Review Completed ✓';
+  } catch (err) {
+    statusEl.textContent = 'Could not reach local save server: ' + err.message;
+    statusEl.className = 'err';
+  }
+});
+</script>
+
+</body>
+</html>

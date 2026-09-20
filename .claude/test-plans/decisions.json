@@ -1,0 +1,239 @@
+{
+  "completed_at": "2026-09-13T17:03:06.167Z",
+  "decisions": [
+    {
+      "id": "BEU-01",
+      "tier": "BE Unit",
+      "title": "createOrder with a sub-scale amount yields an unfillable PENDING order",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "BEU-02",
+      "tier": "BE Unit",
+      "title": "amendOrder runs its positivity check pre-normalization: pin the mechanics",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "low_value"
+    },
+    {
+      "id": "BEU-03",
+      "tier": "BE Unit",
+      "title": "Assert InvalidFillAmountException.Reason and no-DB-call, not just the exception type",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "BEU-04",
+      "tier": "BE Unit",
+      "title": "amendOrder throws OrderNotFoundException for an unknown id",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "duplicate"
+    },
+    {
+      "id": "BEU-05",
+      "tier": "BE Unit",
+      "title": "Delete filledStatusExistsOnEnum",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "not_testable"
+    },
+    {
+      "id": "BEU-06",
+      "tier": "BE Unit",
+      "title": "Merge the two overlapping createOrder tests",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "out_of_scope"
+    },
+    {
+      "id": "BEC-01",
+      "tier": "BE Component",
+      "title": "FillRequest bean-validation versus service-validation decision table",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "BEC-02",
+      "tier": "BE Component",
+      "title": "Malformed and unparseable request bodies — characterize the response shape",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "BEC-03",
+      "tier": "BE Component",
+      "title": "AmendRequest legal-partition completeness — the price-only PATCH",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "low_value"
+    },
+    {
+      "id": "UIU-01",
+      "tier": "UI Unit",
+      "title": "orderApi.handleResponse error-branch decision table",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "UIU-02",
+      "tier": "UI Unit",
+      "title": "orderApi request-shape contract for all five exported functions",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "already_covered"
+    },
+    {
+      "id": "UIU-03",
+      "tier": "UI Unit",
+      "title": "OrderEntryForm client-side validation partitions and post-submit reset",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "UIC-01",
+      "tier": "UI Component",
+      "title": "FillDialog sends a request for empty and negative input — characterize",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "out_of_scope"
+    },
+    {
+      "id": "UIC-02",
+      "tier": "UI Component",
+      "title": "CancelForfeitureDialog two-step confirmation state machine, in isolation",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "UIC-03",
+      "tier": "UI Component",
+      "title": "AmendDialog always sends both fields — pin both consequences",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "not_testable"
+    },
+    {
+      "id": "UIC-04",
+      "tier": "UI Component",
+      "title": "IEEE-754 drift in the already-filled totals",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "out_of_scope"
+    },
+    {
+      "id": "UIC-05",
+      "tier": "UI Component",
+      "title": "ManageOrdersPage loading and load-failure states",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "UIC-06",
+      "tier": "UI Component",
+      "title": "ManageOrdersList empty state",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "duplicate"
+    },
+    {
+      "id": "UIC-07",
+      "tier": "UI Component",
+      "title": "Fill-trail expand and collapse transitions, including the single-expanded invariant",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "already_covered"
+    },
+    {
+      "id": "UIC-08",
+      "tier": "UI Component",
+      "title": "Dismiss and rejection branches across all four dialogs, parametrized",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "duplicate"
+    },
+    {
+      "id": "UIC-09",
+      "tier": "UI Component",
+      "title": "Dialog accessibility audit — assert what exists, escalate what does not",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "INT-01",
+      "tier": "Integration",
+      "title": "Per-test collection isolation in the shared harness",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "INT-02",
+      "tier": "Integration",
+      "title": "Cumulative partial fills reaching exactly zero mark the order FILLED",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "not_testable"
+    },
+    {
+      "id": "INT-03",
+      "tier": "Integration",
+      "title": "Fill boundary at remaining plus or minus one smallest unit",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "INT-04",
+      "tier": "Integration",
+      "title": "A rejected amend must not partially apply the new trigger price",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "low_value"
+    },
+    {
+      "id": "INT-05",
+      "tier": "Integration",
+      "title": "Complete the concurrency pairwise matrix — amend must appear in a race",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "duplicate"
+    },
+    {
+      "id": "INT-06",
+      "tier": "Integration",
+      "title": "Full-stack HTTP contract walk against the real wire format",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "INT-07",
+      "tier": "Integration",
+      "title": "Mixed-status listing, including a raw legacy document, against a real database",
+      "state": "accepted",
+      "manual": false
+    },
+    {
+      "id": "INT-08",
+      "tier": "Integration",
+      "title": "Legacy-document equivalence partitions for cancel, fill and amend",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "out_of_scope"
+    },
+    {
+      "id": "INT-09",
+      "tier": "Integration",
+      "title": "Retarget or drop the repository round-trip test",
+      "state": "declined",
+      "manual": false,
+      "decline_reason": "out_of_scope"
+    },
+    {
+      "id": "MANUAL-1",
+      "tier": "Integration",
+      "title": "fill",
+      "state": "accepted",
+      "manual": true
+    }
+  ]
+}
